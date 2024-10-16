@@ -3,7 +3,7 @@
 from .cedarscript_prompts_base import CEDARScriptPromptsBase
 
 
-class CEDARScriptScriptPromptsGrammar(CEDARScriptPromptsBase):
+class CEDARScriptPromptsGrammar(CEDARScriptPromptsBase):
 
     def edit_format_name(self):
         return f"{super().edit_format_name()}-g"
