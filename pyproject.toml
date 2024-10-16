@@ -47,7 +47,12 @@ dev = [
 package-dir = {"" = "src"}
 
 [tool.setuptools_scm]
+# To override version:
+# >>> SETUPTOOLS_SCM_PRETEND_VERSION=0.0.2 python -m build
+# To dry-run and see version:
+# >>> python -m setuptools_scm
 write_to = "src/cedarscript_integration_aider/_version.py"
+# Append .post{number of commits} to your version if there are commits after the last tag.
 version_scheme = "post-release"
 
 [tool.setuptools.packages.find]
