@@ -48,6 +48,7 @@ package-dir = {"" = "src"}
 
 [tool.setuptools_scm]
 write_to = "src/cedarscript_integration_aider/_version.py"
+version_scheme = "post-release"
 
 [tool.setuptools.packages.find]
 where = ["src"]
