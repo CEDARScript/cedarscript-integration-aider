@@ -1,6 +1,5 @@
 from .cedarscript_prompts_g import CEDARScriptScriptPromptsGrammar
+from ._version import __version__
 
-__version__ = "0.0.1"
-
-__all__ = ["CEDARScriptScriptPromptsGrammar"]
+__all__ = ["CEDARScriptScriptPromptsGrammar", "__version__"]
 

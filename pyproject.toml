@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=61.0", "wheel"]
+requires = ["setuptools>=61.0", "wheel", "setuptools_scm[toml]>=6.2"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -47,8 +47,8 @@ dev = [
 package-dir = {"" = "src"}
 py-modules = ["cedarscript_integration_aider"]
 
-[tool.setuptools.dynamic]
-version = {attr = "cedarscript_integration_aider.__version__"}
+[tool.setuptools_scm]
+write_to = "src/cedarscript_integration_aider/_version.py"
 
 [tool.setuptools.packages.find]
 where = ["src"]
