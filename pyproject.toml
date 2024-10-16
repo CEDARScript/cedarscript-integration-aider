@@ -1,0 +1,78 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cedarscript-integration-aider"
+dynamic = ["version"]
+description = "Allows `Aider` to use CEDARScript as an edit format"
+readme = "README.md"
+authors = [{ name = "Elifarley", email = "cedarscript@orgecc.com" }]
+license = { file = "LICENSE" }
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Intended Audience :: Developers",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Text Processing :: Linguistic",
+    "Topic :: Software Development :: Code Generators",
+    "Topic :: Software Development :: Compilers",
+]
+keywords = ["cedarscript", "code-editing", "refactoring", "code-analysis", "sql-like", "ai-assisted-development"]
+dependencies = [
+]
+requires-python = ">=3.11"
+
+[project.urls]
+Homepage = "https://github.com/CEDARScript/cedarscript-integration-aider"
+Documentation = "https://github.com/CEDARScript/cedarscript-integration-aider#readme"
+Repository = "https://github.com/CEDARScript/cedarscript-integration-aider.git"
+"Bug Tracker" = "https://github.com/CEDARScript/cedarscript-integration-aider/issues"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "black>=22.0",
+    "isort>=5.0",
+    "flake8>=4.0",
+    "mypy>=0.900",
+    "coverage>=6.0",
+    "tox>=3.24",
+]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+py-modules = ["cedarscript_integration_aider"]
+
+[tool.setuptools.dynamic]
+version = {attr = "cedarscript_integration_aider.__version__"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["cedarscript_prompts_*"]
+namespaces = false
+
+[tool.setuptools.package-data]
+"*" = ["*.txt", "*.rst"]
+
+[tool.black]
+line-length = 100
+target-version = ['py312']
+
+[tool.isort]
+profile = "black"
+line_length = 100
+
+[tool.mypy]
+ignore_missing_imports = true
+strict = true
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = "-ra -q"
+testpaths = [
+    "tests",
+]
