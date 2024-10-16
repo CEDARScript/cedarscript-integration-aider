@@ -45,14 +45,13 @@ dev = [
 
 [tool.setuptools]
 package-dir = {"" = "src"}
-py-modules = ["cedarscript_integration_aider"]
 
 [tool.setuptools_scm]
 write_to = "src/cedarscript_integration_aider/_version.py"
 
 [tool.setuptools.packages.find]
 where = ["src"]
-include = ["cedarscript_prompts_*"]
+include = ["cedarscript_integration_aider*"]
 namespaces = false
 
 [tool.setuptools.package-data]
