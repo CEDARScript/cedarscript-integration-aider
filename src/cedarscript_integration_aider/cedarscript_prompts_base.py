@@ -1,9 +1,7 @@
 # flake8: noqa: E501
 
-from abc import ABC
 
-class CEDARScriptPromptsBase(ABC):
-
+class CEDARScriptPromptsBase:
     def edit_format_name(self):
         return "cedarscript"
 

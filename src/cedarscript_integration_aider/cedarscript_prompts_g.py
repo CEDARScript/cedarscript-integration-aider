@@ -190,17 +190,16 @@ module.exports = grammar({
     // ---
 
     /**
-    Syntax: (FUNCTION|CLASS) FROM FILE "<path/to/file>" WHERE <where...> [OFFSET <offset>]
-    Use cases: Specify a function or class of a given file.
+    Syntax: (VARIABLE|FUNCTION|CLASS) "<name>" [OFFSET <offset>] FROM FILE "<path/to/file>"
+    Use cases: Specify an identifier in a given file.
     <params>
-    - `where...`: Identifies a function or class as the item of interest in the file.
+    - `<name>`: Identifies the name of a variable, function or class as the item of interest in the file.
     - `offset`: Specifies how many items to skip. See details in `offset_clause`.
     </params>
     */
     identifier_from_file: $ => seq(
-      choice('FUNCTION', 'CLASS'), 'FROM', $.singlefile_clause,
-      $.where_clause,
-      optional($.offset_clause)
+      $.identifierMarker, 'FROM', $.singlefile_clause,
+      optional($.where_clause)
     ),
 
     /**
@@ -553,26 +552,23 @@ Here's the CEDARScript script:
 
 {fence[0]}CEDARScript
 -- 1. Move the `myFirstFunction` method from the `MyClass` class, placing it at the top level, just before the line where its class starts.
-UPDATE FUNCTION
+UPDATE FUNCTION "myFirstFunction"
   FROM FILE "/dev/stdin"
-  WHERE NAME = "myFirstFunction"
 MOVE WHOLE
 INSERT BEFORE LINE "class MyClass():" -- using the line where the method's class starts as 'reference mark' increases chances of the command being correctly applied.
   RELATIVE INDENTATION 0; -- the block of code being moved wil start at the same indentation as the 'reference mark'
 
 -- 2. Update the copied function to remove references to `self`, now declaring `instance_var_1` as parameter
-UPDATE FUNCTION
-FROM FILE "/dev/stdin"
-WHERE NAME = "myFirstFunction"
+UPDATE FUNCTION "myFirstFunction"
+  FROM FILE "/dev/stdin"
 REPLACE SEGMENT
     STARTING AFTER LINE "def myFirstFunction("
     ENDING AT LINE "self, name: str,"
 WITH CONTENT '''
 @1:instance_var_1: str, name: str,
 ''';
-UPDATE FUNCTION
+UPDATE FUNCTION "myFirstFunction"
 FROM FILE "/dev/stdin"
-WHERE NAME = "myFirstFunction"
 REPLACE SEGMENT
   STARTING AFTER LINE "a = doSomething(name, age)"
   ENDING AT LINE "return a + 5 + len(self.instance_var_1) * 7"
@@ -582,30 +578,27 @@ WITH CONTENT '''
 ''';
 
 -- 3. Update ALL call sites of the method `myFirstFunction` to call the new top-level function with the same name, passing `instance_var_1` as argument
-UPDATE FUNCTION
+UPDATE FUNCTION "anotherFunction"
   FROM FILE "/dev/stdin"
-  WHERE NAME = "anotherFunction"
-  REPLACE SEGMENT
-    STARTING AFTER LINE "def anotherFunction(self, name: str, age: int):"
-    ENDING BEFORE LINE '''c = "x" + '"' + "'" + "z"''' -- multi-line string used to avoid escaping `'` and `"`
-  WITH CONTENT '''
+REPLACE SEGMENT
+  STARTING AFTER LINE "def anotherFunction(self, name: str, age: int):"
+  ENDING BEFORE LINE '''c = "x" + '"' + "'" + "z"''' -- multi-line string used to avoid escaping `'` and `"`
+WITH CONTENT '''
 @1:b = checkVal(45, "strict", myFirstFunction(instance_var_1, name, age), 8, "tops")
 @1:bb = checkVal(7, "lax", myFirstFunction(instance_var_1, name, age), 2, "bottom")
 ''';
-UPDATE FUNCTION
+UPDATE FUNCTION "anotherFunction"
   FROM FILE "/dev/stdin"
-  WHERE NAME = "anotherFunction"
-  REPLACE LINE 'd = checkVal(45, "strict", self.myFirstFunction(name, age), 8, "tops")'
-  WITH CONTENT '''
+REPLACE LINE 'd = checkVal(45, "strict", self.myFirstFunction(name, age), 8, "tops")'
+WITH CONTENT '''
 @0:d = checkVal(45, "strict", myFirstFunction(instance_var_1, name, age), 8, "tops")
 ''';
-UPDATE FUNCTION
+UPDATE FUNCTION "anotherFunction"
   FROM FILE "/dev/stdin"
-  WHERE NAME = "anotherFunction"
-  REPLACE SEGMENT
-    STARTING AT LINE \"\"\"'9"f', "as'df", self.myFirstFunction(name, age))\"\"\" -- multi-line string used to avoid escaping `'` and `"`
-    ENDING BEFORE LINE 'return b * 3'
-  WITH CONTENT '''
+REPLACE SEGMENT
+  STARTING AT LINE \"\"\"'9"f', "as'df", self.myFirstFunction(name, age))\"\"\" -- multi-line string used to avoid escaping `'` and `"`
+  ENDING BEFORE LINE 'return b * 3'
+WITH CONTENT '''
 @0:'9"f', "as'df", myFirstFunction(instance_var_1, name, age))
 ''';
 {fence[1]}
@@ -652,26 +645,23 @@ Here's the CEDARScript script:
 
 {fence[0]}CEDARScript
 -- 1. Move the `myFirstFunction` method from the `MyClass` class, placing it at the top level, just before the line where its class starts.
-UPDATE FUNCTION
+UPDATE FUNCTION "myFirstFunction"
   FROM FILE "/dev/stdin"
-  WHERE NAME = "myFirstFunction"
 MOVE WHOLE
 INSERT BEFORE LINE "class MyClass():" -- using the line where the method's class starts as 'reference mark' increases chances of the command being correctly applied.
   RELATIVE INDENTATION 0; -- the block of code being moved wil start at the same indentation as the 'reference mark'
 
 -- 2. Update the copied function to remove references to `self`, now declaring `instance_var_1` as parameter
-UPDATE FUNCTION
+UPDATE FUNCTION "myFirstFunction"
 FROM FILE "/dev/stdin"
-WHERE NAME = "myFirstFunction"
 REPLACE SEGMENT
-    STARTING AT LINE "def myFirstFunction(self, name: str, age: int):"
-    ENDING BEFORE LINE '\"\"\"Lorem ipsum dolor sit amet' -- Chose the first line below the starting line to get the shortest segment possible
+  STARTING AT LINE "def myFirstFunction(self, name: str, age: int):"
+  ENDING BEFORE LINE '\"\"\"Lorem ipsum dolor sit amet' -- Chose the first line below the starting line to get the shortest segment possible
 WITH CONTENT '''
 @0:def myFirstFunction(instance_var_1: str, name: str, age: int):
 ''';
-UPDATE FUNCTION
-FROM FILE "/dev/stdin"
-WHERE NAME = "myFirstFunction"
+UPDATE FUNCTION "myFirstFunction"
+  FROM FILE "/dev/stdin"
 REPLACE SEGMENT
   STARTING AFTER LINE "a = doSomething(name, age)"
   ENDING AT LINE "return a + 5 + len(self.instance_var_1) * 7"
@@ -680,13 +670,12 @@ WITH CONTENT '''
 ''';
 
 -- 3. Update ALL call sites of the method `myFirstFunction` to call the new top-level function with the same name, passing `instance_var_1` as argument
-UPDATE FUNCTION
-FROM FILE "/dev/stdin"
-WHERE NAME = "anotherFunction"
-  REPLACE SEGMENT
-    STARTING AFTER LINE "# Check and store in 'b' and 'bb'"
-    ENDING BEFORE LINE "return b + bb"
-  WITH CONTENT '''
+UPDATE FUNCTION "anotherFunction"
+  FROM FILE "/dev/stdin"
+REPLACE SEGMENT
+  STARTING AFTER LINE "# Check and store in 'b' and 'bb'"
+  ENDING BEFORE LINE "return b + bb"
+WITH CONTENT '''
 @0:b = checkVal(45, "strict", myFirstFunction(instance_var_1, name, age), 8, "tops")
 @0:bb = checkVal(7, "lax", myFirstFunction(instance_var_1, name, age), 2, "bottom")
 ''';
@@ -700,7 +689,7 @@ Notes:
         dict(
             role="user",
             content="""
-‘’’python
+'''python
 class Greeter:
     def __init__(self):
         pass
@@ -709,7 +698,7 @@ class Greeter:
     def print_with_prefix(self, prefix: str, name: str):
         pass
     def greet(self, name):
-        print(‘...Nice to meet you!’)
+        print('...Nice to meet you!')
         print("Hope you're doing well!")
 '''
 
@@ -730,39 +719,37 @@ Here's the CEDARScript script:
 
 {fence[0]}CEDARScript
 -- 1. Add instance variable `greeting_count: int` to the `Greeter` class to keep track of the greeting count
-UPDATE FUNCTION
-FROM “/dev/stdin”
-WHERE NAME = “__init__”
+UPDATE FUNCTION "__init__"
+  FROM FILE "/dev/stdin"
 REPLACE BODY -- no need to preserve the body, so we replace it
-WITH CONTENT ‘’’
+WITH CONTENT '''
 @0:self.greeting_count: int = 0
-‘’’;
+''';
 
 -- 2. Implement the `print_with_prefix` method to print parameter `name` prefixed with the `prefix` parameter;
-UPDATE FUNCTION
-FROM “/dev/stdin”
-WHERE NAME = “print_with_prefix”
+UPDATE FUNCTION "print_with_prefix"
+  FROM FILE "/dev/stdin"
 REPLACE BODY -- no need to preserve the body, so we replace it
-WITH CONTENT ‘’’
-@0:print(f”{{prefix}}{{name}}”)
-‘’’;
+WITH CONTENT '''
+@0:print(f"{{prefix}}{{name}}")
+''';
 
 -- 3. Insert a call to the `print_with_prefix` method at the top of the last method (`greet`);
-UPDATE FILE “/dev/stdin”
-INSERT INSIDE FUNCTION “greet” TOP -- at the TOP of the function body
+UPDATE FILE "/dev/stdin"
+INSERT INSIDE FUNCTION "greet" TOP -- at the TOP of the function body
 -- The function body is the reference indent level; `@0:` means to use that same level 
-WITH CONTENT ‘’’
+WITH CONTENT '''
 @0:print_with_prefix('Hi, ', name)
-‘’’;
+''';
 
 -- 4. Insert code at the bottom of the `greet` method to increment the greeting count and print it.
-UPDATE FILE “/dev/stdin”
-INSERT INSIDE FUNCTION “greet” BOTTOM -- at the BOTTOM of the function body
+UPDATE FILE "/dev/stdin"
+INSERT INSIDE FUNCTION "greet" BOTTOM -- at the BOTTOM of the function body
 -- The function body is the reference indent level; `@0:` means to use that same level 
-WITH CONTENT ‘’’
+WITH CONTENT '''
 @0:self.greeting_count += 1
 @0:print(f'There have been {{self.greeting_count}} greetings so far.')
-‘’’;
+''';
 {fence[1]}
 
 Notes to self:

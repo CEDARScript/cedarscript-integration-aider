@@ -6,9 +6,9 @@ build-backend = "setuptools.build_meta"
 name = "cedarscript-integration-aider"
 dynamic = ["version"]
 description = "Allows `Aider` to use CEDARScript as an edit format"
-readme = "README.md"
 authors = [{ name = "Elifarley", email = "cedarscript@orgecc.com" }]
-license = { file = "LICENSE" }
+readme = "README.md"
+license = {text = "MIT"}
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Programming Language :: Python :: 3",
