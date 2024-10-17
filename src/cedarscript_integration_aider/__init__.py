@@ -12,13 +12,14 @@ __all__ = [
 ]
 
 class CEDARScriptPromptsAdapter:
-    def __init__(self, cedarscript_prompts):
+    def __init__(self, cedarscript_prompts, base_prompts):
         self.cedarscript_prompts: CEDARScriptPromptsBase = cedarscript_prompts
+        self.base_prompts = base_prompts
 
-    def __getattr__(self, name):
-        result = getattr(self.cedarscript_prompts, name)
-        # if name != 'edit_format_training':
-        #     print(f"[__getattr__] {name} = {result}")
-        # if name == 'edit_format_name':
-        #     print(f'edit_format_name: {result()}')
-        return result
+    def __getattribute__(self, name):
+        cedarscript_prompts = super().__getattribute__('cedarscript_prompts')
+        if hasattr(cedarscript_prompts, name):
+            return getattr(cedarscript_prompts, name)
+
+        base_prompts = super().__getattribute__('base_prompts')
+        return getattr(base_prompts, name)
