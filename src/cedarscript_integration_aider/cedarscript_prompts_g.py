@@ -194,7 +194,7 @@ module.exports = grammar({
     Use cases: Specify an identifier in a given file.
     <params>
     - `<name>`: Identifies the name of a variable, function or class as the item of interest in the file.
-    - `offset`: Specifies how many items to skip. See details in `offset_clause`.
+    - `<offset>`: Specifies how many items to skip. Mandatory when there are 2 or more matching elements. See details in `offset_clause`.
     </params>
     */
     identifier_from_file: $ => seq(
@@ -302,12 +302,12 @@ module.exports = grammar({
     region_field: $ => field('region', choice(BODY_OR_WHOLE, $.marker_or_segment)),
 
     /**
-    Field `offset`: Integer to identify how many occurrences to skip. *MANDATORY* iff there are 2 or more occurrences.
+    Field `offset`: Integer to identify how many matches to skip. *MANDATORY* iff there are 2 or more matching elements.
     <examples>
-    <li>`OFFSET 0` is the default. It means to skip 0 items (so, points to the *1st* occurrence).</li>
-    <li>`OFFSET 1` skips 1 item, so points to the *2nd* occurrence</li>
-    <li>`OFFSET 2` skips 2 items, so points to the *3rd* occurrence</li>
-    <li>`OFFSET n` skips n items, thus specifies the (n+1)-th occurrence</li>
+    <li>`OFFSET 0` is the default when there's only one matching element. It means to skip 0 items (so, points to the *1st* match).</li>
+    <li>`OFFSET 1` skips 1 matches, so points to the *2nd* matches</li>
+    <li>`OFFSET 2` skips 2 matches, so points to the *3rd* matches</li>
+    <li>`OFFSET n` skips n matches, thus specifies the (n+1)-th matches</li>
     </examples>
     */
     offset_clause: $ => seq('OFFSET', field('offset', $.number)),
@@ -483,7 +483,7 @@ in the target code file.
 <step>Identify the files to be updated</step>
 <step>Determine the best, concise sequence of targeted CEDARScript commands to express the code change in shortest possible way.
 Super careful to avoid syntax errors.</step>
-<step>If your script fails, carefully the error details inside tag <error-details> and tell me how you can overcome the problem, then try harder to get it right.
+<step>If your script fails, carefully analyze the error details inside tag <error-details> and tell me how you can overcome the problem, then try harder to get it right.
 </step>
 </action>
 <important>
@@ -504,7 +504,8 @@ adjusting your relative indentation to match the target code's style and positio
 ONLY EVER RETURN CODE IN *CEDARScript block*!
 CEDARScript commands MUST BE *AS CONCISE AS POSSIBLE*!
 ALWAYS enclose CEDARScript block using ```CEDARScript before and ``` after the block!
-If you don't want to send a CEDARScript block, you HAVE to end the message with the special tag `<NOCEDARSCRIPT/>`.
+If you want to just *show* some CEDARScript commands to the user instead of executing them, use ``` (instead of ```CEDARScript).
+If you don't want to send a CEDARScript block, you HAVE to end the message with the special tag <NOCEDARSCRIPT/> as the last line.
 {shell_cmd_reminder}
 """
 
@@ -556,7 +557,7 @@ UPDATE FUNCTION "myFirstFunction"
   FROM FILE "/dev/stdin"
 MOVE WHOLE
 INSERT BEFORE LINE "class MyClass():" -- using the line where the method's class starts as 'reference mark' increases chances of the command being correctly applied.
-  RELATIVE INDENTATION 0; -- the block of code being moved wil start at the same indentation as the 'reference mark'
+  RELATIVE INDENTATION 0; -- the function being moved wil start at the same indentation as the class MyClass
 
 -- 2. Update the copied function to remove references to `self`, now declaring `instance_var_1` as parameter
 UPDATE FUNCTION "myFirstFunction"
@@ -756,5 +757,185 @@ Notes to self:
 1. As the code to be changed was provided in the message, we're using file name "/dev/stdin".
 2. When using `INSIDE`, the body of the function or class is implicit, so we can NEVER write `BODY` after `INSIDE`.
 """,
+        ),
+        dict(
+            role="user",
+            content="""'''python
+class A0:
+    def __init__(self, v: int):
+        self.instance_var = v
+    def calc1(self, a):
+        return a * self.instance_var
+    def calc2(self, a):
+        # Call calc1...
+        c = self.calc1(5)
+class A:
+    def __init__(self, v: int):
+        self.instance_var = v
+    def calc1(self, a):
+        return a * self.instance_var
+    def calc2(self, a):
+        # Call calc1...
+        c = self.calc1(5)
+        # print
+        print(c)
+        # Call calc1...
+        c = self.calc1(5)
+        # print
+        print(c)
+        # Call calc1...
+        c = self.calc1(5)
+        # print
+        print(c)
+        # Call calc1...
+        c = self.calc1(5)
+'''
+Refactor the `calc1` method in the `A` class to be a stand alone, top level function.
+"""
+        ),
+        dict(
+            role="assistant",
+            content="""Here's my plan to implement the requested changes:
+1. Move the `calc1` method from the `A` class, placing it at the top level, just before the line where its class starts;
+2. Update the copied function to remove references to `self`, now declaring `instance_var` as parameter;
+3. Update ALL call sites of the method `calc1` to call the new top-level function with the same name, passing `instance_var` as argument;
+
+Here's the CEDARScript script:
+
+{fence[0]}CEDARScript
+-- 1. Move the `calc1` method from the `A` class, placing it at the top level, just before the line where its class starts
+UPDATE FUNCTION "calc1"
+  FROM FILE "/dev/stdin"
+MOVE WHOLE
+INSERT BEFORE LINE "class A:"
+  RELATIVE INDENTATION 0;
+
+-- 2. Update the copied function to remove references to `self`, now declaring `instance_var` as parameter
+UPDATE FUNCTION "calc1"
+  FROM FILE "/dev/stdin"
+REPLACE LINE "def calc1(self, a):"
+WITH CONTENT '''
+@0:def calc1(instance_var: int, a):
+''';
+UPDATE FUNCTION "calc1"
+  FROM FILE "/dev/stdin"
+REPLACE LINE 'return a * self.instance_var'
+WITH CONTENT '''
+@0:return a * instance_var
+''';
+
+-- 3. Update ALL call sites of the method `calc1` to call the new top-level function with the same name, passing `instance_var` as argument
+UPDATE FUNCTION "calc2" OFFSET 1 -- There are 2 `calc2` methods. We skip 1, meaning we target the second one (which is the one in the `A` class)
+  FROM FILE "/dev/stdin"
+REPLACE LINE 'c = self.calc1(5)' OFFSET 0 -- There are 4 such lines. We skip 0, meaning we target the first one
+WITH CONTENT '''
+@0:c = calc1(self.instance_var, 5)
+''';
+UPDATE FUNCTION "calc2" OFFSET 1
+  FROM FILE "/dev/stdin"
+REPLACE LINE 'c = self.calc1(5)' OFFSET 0 -- Now, there are only 3 such lines (as the previous command changed one of the 4). We skip 0, meaning we target the first one
+WITH CONTENT '''
+@0:c = calc1(self.instance_var, 5)
+''';
+UPDATE FUNCTION "calc2" OFFSET 1
+  FROM FILE "/dev/stdin"
+REPLACE LINE 'c = self.calc1(5)' OFFSET 0 -- Now, there are only 2 such lines. We skip 0, meaning we target the first one
+WITH CONTENT '''
+@0:c = calc1(self.instance_var, 5)
+''';
+UPDATE FUNCTION "calc2" OFFSET 1
+  FROM FILE "/dev/stdin"
+REPLACE LINE 'c = self.calc1(5)' OFFSET 0 -- Now, there are only 1 such line. We skip 0, meaning we target the first (and only) one
+WITH CONTENT '''
+@0:c = calc1(self.instance_var, 5)
+''';
+{fence[1]}""",
+        ),        dict(
+            role="user",
+            content="""'''python
+class A0:
+    def __init__(self, v: int):
+        self.instance_var = v
+    def calc1(self, a):
+        return a * self.instance_var
+    def calc2(self, a):
+        # Call calc1...
+        c = self.calc1(5)
+class A:
+    def __init__(self, v: int):
+        self.instance_var = v
+    def calc1(self, a):
+        return a * self.instance_var
+    def calc2(self, a):
+        # Call calc1...
+        c = self.calc1(5)
+        # print
+        print(c)
+        # Call calc1...
+        c = self.calc1(5)
+        # print
+        print(c)
+        # Call calc1...
+        c = self.calc1(5)
+        # print
+        print(c)
+        # Call calc1...
+        c = self.calc1(5)
+'''
+Refactor the `calc1` method in the `A` class to be a stand alone, top level function (If you need to update a small function in different lines, try replacing the whole function to save tokens)
+"""
+        ),
+        dict(
+            role="assistant",
+            content="""Here's my plan to implement the requested changes:
+1. Move the `calc1` method from the `A` class, placing it at the top level, just before the line where its class starts;
+2. Update the copied function to remove references to `self`, now declaring `instance_var` as parameter;
+3. Update ALL call sites of the method `calc1` to call the new top-level function with the same name, passing `instance_var` as argument;
+
+Here's the CEDARScript script:
+
+{fence[0]}CEDARScript
+-- 1. Move the `calc1` method from the `A` class, placing it at the top level, just before the line where its class starts
+UPDATE FUNCTION "calc1"
+  FROM FILE "/dev/stdin"
+MOVE WHOLE
+INSERT BEFORE LINE "class A:"
+  RELATIVE INDENTATION 0;
+
+-- 2. Replace the whole copied function to remove references to `self` and declare `instance_var` as parameter
+UPDATE FUNCTION "calc1"
+  FROM FILE "/dev/stdin"
+REPLACE WHOLE
+WITH CONTENT '''
+@0:def calc1(instance_var: int, a):
+@1:return a * instance_var
+''';
+
+-- 3. Update ALL call sites of the method `calc1` to call the new top-level function with the same name, passing `instance_var` as argument
+UPDATE FUNCTION "calc2" OFFSET 1 -- There are 2 `calc2` methods. We skip 1, meaning we target the second one (which is the one in the `A` class)
+  FROM FILE "/dev/stdin"
+REPLACE LINE 'c = self.calc1(5)' OFFSET 0 -- There are 4 such lines. We skip 0, meaning we target the first one
+WITH CONTENT '''
+@0:c = calc1(self.instance_var, 5)
+''';
+UPDATE FUNCTION "calc2" OFFSET 1
+  FROM FILE "/dev/stdin"
+REPLACE LINE 'c = self.calc1(5)' OFFSET 0 -- Now, there are only 3 such lines (as the previous command changed one of the 4). We skip 0, meaning we target the first one
+WITH CONTENT '''
+@0:c = calc1(self.instance_var, 5)
+''';
+UPDATE FUNCTION "calc2" OFFSET 1
+  FROM FILE "/dev/stdin"
+REPLACE LINE 'c = self.calc1(5)' OFFSET 0 -- Now, there are only 2 such lines. We skip 0, meaning we target the first one
+WITH CONTENT '''
+@0:c = calc1(self.instance_var, 5)
+''';
+UPDATE FUNCTION "calc2" OFFSET 1
+  FROM FILE "/dev/stdin"
+REPLACE LINE 'c = self.calc1(5)' OFFSET 0 -- Now, there are only 1 such line. We skip 0, meaning we target the first (and only) one
+WITH CONTENT '''
+@0:c = calc1(self.instance_var, 5)
+''';
+{fence[1]}""",
         ),
     ]
