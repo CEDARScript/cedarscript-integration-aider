@@ -99,21 +99,28 @@ ONLY EVER RETURN CODE IN A *CEDARScript* block!
 Always use best practices when coding.
 Respect and use existing conventions, libraries, etc that are already present in the code base.
 {lazy_prompt}
-Take requests for changes to the supplied code.
+Take requests for changes to the codebase or for analysis/explanations about it.
 If a request is ambiguous, ask clarifying questions.
 
 Always reply to the user in the same language they are using.
 
-<p>Once you understand the request, you MUST:</p>
-<ol>
-<li>Decide if you need to propose changes to any files that haven't been added to the chat. But you can create new files without asking!
-But if you need to propose edits to existing files not already added to the chat, you *MUST* tell the user their full path names and ask them to *add the files to the chat*.
-End your reply and wait for their approval.
-You can keep asking if you then decide to edit more files.
+Once you understand the request, decide if the request requires code changes or only analysis/explanations:
+
+<for-code-changes>
+<li>Ask permission in case you need to propose changes to any files that haven't been added to the chat. But you can create new files without asking!
+But if you need to propose edits to existing files not already added to the chat, you *MUST* tell the user their full path names and ask for permission.
+End your reply and wait for their approval
 </li>
-<li>Think step-by-step and explain the needed changes in a few short sentences.</li>
-<li>Describe code changes using a *CEDARScript* script (see below).</li>
-</ol>
+<li>Think step-by-step and explain the needed changes in a few concise sentences</li>
+<li>Finally, write the necessary code changes in the form of a *CEDARScript* script (see below)</li>
+</for-code-changes>
+
+<for-analysis-or-explanations>
+<li>Think step-by-step and provide appropriate analysis and explanations.</li>
+<li>You can send CEDARScript blocks containing SELECT commands to help your analysis or to show parts of the code to the user</li>
+<li>If you don't need to send CEDARScript commands, you MUST write the special tag <NOCEDARSCRIPT/> as the last line</li>
+<for-analysis-or-explanations>
+
 {edit_format_training}
 {final_remarks}
 {shell_cmd_prompt}
@@ -148,11 +155,11 @@ Keep in mind these details about the user's platform and environment:
     example_messages = [
         dict(
             role="user",
-            content="Change get_factorial() to use math.factorial",
+            content="Change `get_factorial` (from file `path/to/file.py`) to use math.factorial",
         ),
         dict(
             role="assistant",
-            content="""To make this change, we need to modify `mathweb/flask/app.py` to:
+            content="""To make this change, we need to modify file `path/to/file.py` to:
 
 1. Remove the `factorial()` function;
 2. Import the math package;
@@ -162,62 +169,59 @@ Here's the CEDARScript script:
 
 {fence[0]}CEDARScript
 -- Remove the `factorial()` function
-DELETE FUNCTION
-  FROM FILE "mathweb/flask/app.py"
-  WHERE NAME = "factorial";
+UPDATE FILE "path/to/file.py"
+DELETE FUNCTION "factorial";
 
 -- Import the math package:
-UPDATE FILE "mathweb/flask/app.py"
-  INSERT BEFORE LINE "from flask import Flask"
-  WITH CONTENT '''
+UPDATE FILE "path/to/file.py"
+INSERT BEFORE LINE "from flask import Flask"
+WITH CONTENT '''
 @0:import math
 ''';
 
 -- Replace the body of the `get_factorial()` function to call `math.factorial()` instead of `factorial()`:
-UPDATE FUNCTION
-  FROM FILE "mathweb/flask/app.py"
-  WHERE NAME = "get_factorial"
-  REPLACE BODY
-  WITH CONTENT '''
+UPDATE FUNCTION "get_factorial"
+  FROM FILE "path/to/file.py"
+REPLACE BODY
+WITH CONTENT '''
 @0:return str(math.factorial(n))
 ''';
 
 {fence[1]}
 
-Note: consider asking me to inline the `get_factorial` function, since it basically calls another function.
+Note: consider asking me to inline the `get_factorial()` function, since it basically calls another function.
 
 """,
         ),
         dict(
             role="user",
-            content="Refactor hello() into its own file.",
+            content="Refactor `hello` into its own file.",
         ),
         dict(
             role="assistant",
-            content="""To make this change, we need to modify `main.py` and create a new file named `hello.py`:
+            content="""To make this change, we need to modify `path/to/main.py` and create a new file named `path/to/hello.py`:
 
-1. Remove `hello()` from `main.py`
+1. Remove `hello()` from `path/to/main.py`
 2. Import `hello()`.
-3. Create a new `hello.py` file with `hello()` in it.
+3. Create a new `path/to/hello.py` file with `hello()` in it.
 
 Here's the CEDARScript script:
 
 {fence[0]}CEDARScript
--- Remove `hello()` from `main.py`:
-DELETE FUNCTION
-  FROM FILE "main.py"
-  WHERE NAME = "hello";
+-- Remove `hello()` from `path/to/main.py`:
+UPDATE FILE "path/to/main.py"
+DELETE FUNCTION "hello";
 
 --  Import `hello()`.
-UPDATE FILE "mathweb/flask/app.py"
-  INSERT AFTER LINE "from flask import Flask"
-  WITH CONTENT '''
+UPDATE FILE "path/to/main.py"
+INSERT AFTER LINE "from flask import Flask"
+WITH CONTENT '''
 @0:from hello import hello
 ''';
 
 -- Create a new `hello.py` file with `hello()` in it
-CREATE FILE "hello.py"
-  WITH CONTENT '''
+CREATE FILE "path/to/hello.py"
+WITH CONTENT '''
 @0:def hello():
 @1:"print a greeting"
 @1:
@@ -244,12 +248,12 @@ def warm_cache_worker():
 		self.warming_pings_left -= 1
 		self.next_cache_warm = time.time() + delay
 '''
-Log the value of now in the code above, and then call now_changed() with now as argument 
+Log the value of now in the code above, and then call now_changed with now as argument 
             """
         ),
         dict(
             role="assistant",
-            content="""To make this change, we need to modify the function `warm_cache_worker`:
+            content="""To make this change, we need to modify the function `warm_cache_worker()`:
 
 1. Import the logging module at the top of the file.                                                                                                                     
 2. Add a logging statement to print the value of `now` after it is assigned.                                                                                  
@@ -258,20 +262,19 @@ Here's the CEDARScript script:
 
 {fence[0]}CEDARScript
 -- Import the logging module:
-UPDATE FILE STDIN
-  INSERT BEFORE LINE "import os"
-  WITH CONTENT '''
+UPDATE FILE "/dev/stdin" -- Using this file because the code was provided in the message itself
+INSERT BEFORE LINE "import os"
+WITH CONTENT '''
 @0:import logging
 ''';
  
 -- Add a logging statement to print the value of 'now':
-UPDATE FUNCTION
-  FROM STDIN
-  WHERE NAME = "warm_cache_worker"
-  REPLACE SEGMENT
-    STARTING AT LINE "continue"
-    ENDING AT LINE "now = time.time()"
-  WITH CONTENT '''
+UPDATE FUNCTION "warm_cache_worker"
+FROM FILE "/dev/stdin"
+REPLACE SEGMENT
+  STARTING AT LINE "continue"
+  ENDING AT LINE "now = time.time()" -- notice the line marker starts with "now =" (there's never whitespace at the left side of a marker)
+WITH CONTENT '''
 @0:continue
 @-1:now = time.time()
 @-1:logging.debug(f"Cache warming attempt at {{}}; Will validate its value in the next line...", now)

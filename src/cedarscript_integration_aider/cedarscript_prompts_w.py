@@ -667,7 +667,7 @@ Examples:
    - The "STARTING" line marker is one of the lines found in the original code, but trimmed (that is, don't include spaces nor tabs at the sides of the marker).
 Same goes for the "ENDING" line marker. Both should be close to the contents to be changed. Both must ALWAYS escape the quote character.
    - The "ENDING" line marker MUST always correspond to a line in the original code that comes AFTER the `STARTING AT` line. 
-   - If applying the changes fails, try choosing other, longer lines for the start or end markers.
+   - If applying the changes fails, try choosing other nearby lines for the start or end markers.
 </li>
 </ul>
 

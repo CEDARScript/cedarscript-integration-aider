@@ -194,7 +194,7 @@ module.exports = grammar({
     Use cases: Specify an identifier in a given file.
     <params>
     - `<name>`: Identifies the name of a variable, function or class as the item of interest in the file.
-    - `offset`: Specifies how many items to skip. See details in `offset_clause`.
+    - `<offset>`: Specifies how many items to skip. Mandatory when there are 2 or more matching elements. See details in `offset_clause`.
     </params>
     */
     identifier_from_file: $ => seq(
@@ -253,8 +253,8 @@ module.exports = grammar({
 
     // <specifying-locations-in-code>
     /**
-    lineMarker: Points to specific line via its trimmed contents.
-    Use `OFFSET <n>` to pinpoint which (if there are 2 or more with same content)
+    lineMarker: Points to specific line via its trimmed contents. You *MUST* strip whitespace from left and right of the value!
+    *NEVER* use an ambiguous line (one that appears 2 or more times) as reference. Instead, prefer a different, nearby line.
     */
     lineMarker: $ => seq('LINE', field('lineMarker', $.string), optional($.offset_clause)),
     /**
@@ -302,12 +302,12 @@ module.exports = grammar({
     region_field: $ => field('region', choice(BODY_OR_WHOLE, $.marker_or_segment)),
 
     /**
-    Field `offset`: Integer to identify how many occurrences to skip. *MANDATORY* iff there are 2 or more occurrences.
+    Field `offset`: Integer to identify how many matches to skip. *MANDATORY* iff there are 2 or more matching elements.
     <examples>
-    <li>`OFFSET 0` is the default. It means to skip 0 items (so, points to the *1st* occurrence).</li>
-    <li>`OFFSET 1` skips 1 item, so points to the *2nd* occurrence</li>
-    <li>`OFFSET 2` skips 2 items, so points to the *3rd* occurrence</li>
-    <li>`OFFSET n` skips n items, thus specifies the (n+1)-th occurrence</li>
+    <li>`OFFSET 0` is the default when there's only one matching element. It means to skip 0 items (so, points to the *1st* match).</li>
+    <li>`OFFSET 1` skips 1 matches, so points to the *2nd* matches</li>
+    <li>`OFFSET 2` skips 2 matches, so points to the *3rd* matches</li>
+    <li>`OFFSET n` skips n matches, thus specifies the (n+1)-th matches</li>
     </examples>
     */
     offset_clause: $ => seq('OFFSET', field('offset', $.number)),
@@ -483,7 +483,7 @@ in the target code file.
 <step>Identify the files to be updated</step>
 <step>Determine the best, concise sequence of targeted CEDARScript commands to express the code change in shortest possible way.
 Super careful to avoid syntax errors.</step>
-<step>If your script fails, carefully the error details inside tag <error-details> and tell me how you can overcome the problem, then try harder to get it right.
+<step>If your script fails, carefully analyze the error details inside tag <error-details> and tell me how you can overcome the problem, then try harder to get it right.
 </step>
 </action>
 <important>
@@ -498,13 +498,15 @@ Super careful to avoid syntax errors.</step>
 <li>Prefer using multiline_string (enclosed in ''') even for single line content (provides better indentation)</li>
 <li>For `CONTENT` blocks, ALWAYS use `relative indent prefix` for each line. Understand that the actual indentation characters (spaces or tabs) will be applied by the CEDARScript engine,
 adjusting your relative indentation to match the target code's style and position</li>
+<li>*NEVER* use an ambiguous line (one that appears 2 or more times) as reference. Instead, prefer a different, nearby line.</li>
 </ul>
 
 {lazy_prompt}
 ONLY EVER RETURN CODE IN *CEDARScript block*!
 CEDARScript commands MUST BE *AS CONCISE AS POSSIBLE*!
 ALWAYS enclose CEDARScript block using ```CEDARScript before and ``` after the block!
-If you don't want to send a CEDARScript block, you HAVE to end the message with the special tag `<NOCEDARSCRIPT/>`.
+If you want to just *show* some CEDARScript commands to the user instead of executing them, use ``` (instead of ```CEDARScript).
+If you don't want to send a CEDARScript block, you HAVE to end the message with the special tag <NOCEDARSCRIPT/> as the last line.
 {shell_cmd_reminder}
 """
 
@@ -544,19 +546,19 @@ Refactor method myFirstFunction to be a stand alone, top level function.
         dict(
             role="assistant",
             content="""Here's my plan to make this refactoring:
-1. Move the `myFirstFunction` method from the `MyClass` class, placing it at the top level, just before the line where its class starts;
+1. Move the `myFirstFunction()` method from the `MyClass` class, placing it at the top level, just before the line where its class starts;
 2. Update the copied function to remove references to `self` and declare any required instance members as function parameters;
 3. Update call sites of the method `myFirstFunction` to call the new top-level function with the same name, passing any instance members as arguments;
 
 Here's the CEDARScript script:
 
 {fence[0]}CEDARScript
--- 1. Move the `myFirstFunction` method from the `MyClass` class, placing it at the top level, just before the line where its class starts.
+-- 1. Move the `myFirstFunction()` method from the `MyClass` class, placing it at the top level, just before the line where its class starts.
 UPDATE FUNCTION "myFirstFunction"
   FROM FILE "/dev/stdin"
 MOVE WHOLE
 INSERT BEFORE LINE "class MyClass():" -- using the line where the method's class starts as 'reference mark' increases chances of the command being correctly applied.
-  RELATIVE INDENTATION 0; -- the block of code being moved wil start at the same indentation as the 'reference mark'
+  RELATIVE INDENTATION 0; -- the function being moved wil start at the same indentation as the class MyClass
 
 -- 2. Update the copied function to remove references to `self`, now declaring `instance_var_1` as parameter
 UPDATE FUNCTION "myFirstFunction"
@@ -572,7 +574,7 @@ FROM FILE "/dev/stdin"
 REPLACE SEGMENT
   STARTING AFTER LINE "a = doSomething(name, age)"
   ENDING AT LINE "return a + 5 + len(self.instance_var_1) * 7"
--- `@-1:` used because the return statement is 1 indent level to the *left* of the STARTING reference mark
+-- `@-1:` is used because the return statement is 1 indent level to the *left* of 'a = doSomething(name, age)' (STARTING reference mark)
 WITH CONTENT '''
 @-1:return a + 5 + len(instance_var_1) * 7
 ''';
@@ -637,7 +639,7 @@ class MyClass(NamedTuple):
         dict(
             role="assistant",
             content="""Here's my plan to make this refactoring:
-1. Move the `myFirstFunction` method from the `MyClass` class, placing it at the top level, just before the line where its class starts;
+1. Move the `myFirstFunction()` method from the `MyClass` class, placing it at the top level, just before the line where its class starts;
 2. Update the copied function to remove references to `self` and declare any required instance members as function parameters;
 3. Update call sites of the method `myFirstFunction` to call the new top-level function with the same name, passing any instance members as arguments;
 
@@ -711,9 +713,9 @@ In `Greeter` class above, we have placeholder methods that need to be implemente
             role="assistant",
             content="""Here's my plan to implement the requested changes:
 1. Add instance variable `greeting_count: int` to the `Greeter` class to keep track of the greeting count;
-2. Implement the `print_with_prefix` method to print parameter `name` prefixed with the `prefix` parameter;
-3. Insert a call to the `print_with_prefix` method at the top of the last method (`greet`);
-4. Insert code at the bottom of the `greet` method to print the greeting count and increment it.
+2. Implement the `print_with_prefix()` method to print parameter `name` prefixed with the `prefix` parameter;
+3. Insert a call to the `print_with_prefix()` method at the top of the last method (`greet()`);
+4. Insert code at the bottom of the `greet()` method to print the greeting count and increment it.
 
 Here's the CEDARScript script:
 
@@ -726,7 +728,7 @@ WITH CONTENT '''
 @0:self.greeting_count: int = 0
 ''';
 
--- 2. Implement the `print_with_prefix` method to print parameter `name` prefixed with the `prefix` parameter;
+-- 2. Implement the `print_with_prefix()` method to print parameter `name` prefixed with the `prefix` parameter;
 UPDATE FUNCTION "print_with_prefix"
   FROM FILE "/dev/stdin"
 REPLACE BODY -- no need to preserve the body, so we replace it
@@ -734,7 +736,7 @@ WITH CONTENT '''
 @0:print(f"{{prefix}}{{name}}")
 ''';
 
--- 3. Insert a call to the `print_with_prefix` method at the top of the last method (`greet`);
+-- 3. Insert a call to the `print_with_prefix()` method at the top of the last method (`greet`);
 UPDATE FILE "/dev/stdin"
 INSERT INSIDE FUNCTION "greet" TOP -- at the TOP of the function body
 -- The function body is the reference indent level; `@0:` means to use that same level 
@@ -742,7 +744,7 @@ WITH CONTENT '''
 @0:print_with_prefix('Hi, ', name)
 ''';
 
--- 4. Insert code at the bottom of the `greet` method to increment the greeting count and print it.
+-- 4. Insert code at the bottom of the `greet()` method to increment the greeting count and print it.
 UPDATE FILE "/dev/stdin"
 INSERT INSIDE FUNCTION "greet" BOTTOM -- at the BOTTOM of the function body
 -- The function body is the reference indent level; `@0:` means to use that same level 
@@ -756,5 +758,236 @@ Notes to self:
 1. As the code to be changed was provided in the message, we're using file name "/dev/stdin".
 2. When using `INSIDE`, the body of the function or class is implicit, so we can NEVER write `BODY` after `INSIDE`.
 """,
+        ),
+        dict(
+            role="user",
+            content="""'''python
+class A0:
+    def __init__(self, v: int):
+        self.instance_var = v
+    def calc1(self, a):
+        return a * self.instance_var
+    def calc2(self, a):
+        # Call calc1...
+        c = self.calc1(5)
+class A:
+    def __init__(self, v: int):
+        self.instance_var = v
+    def calc1(self, a):
+        \"\"\"
+        'calc1' is a method
+        that takes 'a' as parameter.
+        and then
+        perform a calculation
+        that multiplies 'a' (the first argument
+        after 'self') by a value stored in 'self.instance_var'.
+        \"\"\"
+        # Some more comments...
+        return a * self.instance_var
+    def calc2(self, a):
+        # c is declared
+        c = 4
+        # print
+        print(c)
+        # Call calc1...
+        c = self.calc1(
+            2
+        )
+        # print
+        print(c)
+        # inc c
+        c += 1
+        # print
+        print(c)
+'''
+Refactor the `calc1` method in the `A` class to be a stand alone, top level function.
+"""
+        ),
+        dict(
+            role="assistant",
+            content="""Here's my plan to implement the requested changes:
+1. Move the `calc1()` method from the `A` class, placing it at the top level, just before the line where its class starts;
+2. Update the copied function to remove references to `self`, now declaring `instance_var` as parameter;
+3. Update ALL call sites of the method `calc1()` to call the new top-level function with the same name, passing `instance_var` as argument;
+
+Here's the CEDARScript script:
+
+{fence[0]}CEDARScript
+-- 1. Move the `calc1` method from the `A` class, placing it at the top level, just before the line where its class starts
+UPDATE FUNCTION "calc1"
+  FROM FILE "/dev/stdin"
+MOVE WHOLE
+INSERT BEFORE LINE "class A:"
+  RELATIVE INDENTATION 0;
+
+-- 2. Update the copied function to remove references to `self`, now declaring `instance_var` as parameter
+UPDATE FUNCTION "calc1"
+  FROM FILE "/dev/stdin"
+REPLACE LINE "def calc1(self, a):"
+WITH CONTENT '''
+@0:def calc1(instance_var: int, a):
+''';
+UPDATE FUNCTION "calc1"
+  FROM FILE "/dev/stdin"
+REPLACE LINE "after 'self') by a value stored in 'self.instance_var'."
+WITH CONTENT '''
+@0:after 'instance_var') by a value stored in 'instance_var'.
+''';
+UPDATE FUNCTION "calc1"
+  FROM FILE "/dev/stdin"
+REPLACE LINE 'return a * self.instance_var'
+WITH CONTENT '''
+@0:return a * instance_var
+''';
+
+-- 3. Update ALL call sites of the method `calc1` to call the new top-level function with the same name, passing `instance_var` as argument
+UPDATE FUNCTION "calc2" OFFSET 1 -- There are 2 `calc2` methods. We skip 1, meaning we target the second one (which is the one in the `A` class)
+  FROM FILE "/dev/stdin"
+REPLACE LINE 'c = self.calc1(' -- There's only 1 call site, so it's more concise to just replace a line instead of the whole `calc2` contents
+WITH CONTENT '''
+@0:c = calc1(self.instance_var,
+''';
+{fence[1]}""",
+        ),
+    dict(
+            role="user",
+            content="""'''python
+class A0:
+    def __init__(self, v: int):
+        self.instance_var = v
+    def calc1(self, a):
+        return a * self.instance_var
+    def calc2(self, a):
+        # Call calc1...
+        c = self.calc1(5)
+class A:
+    def __init__(self, v: int):
+        self.instance_var = v
+    def calc1(self, a):
+        return a * self.instance_var
+    def calc2(self, a):
+        # print a
+        print(a)
+        # Call calc1...
+        c = ["x", str(self.calc1(
+            5), "xx"]
+        c = ["x", str(self.calc1(
+            6), "xx"]
+        # Done...
+        return c
+'''
+Refactor the `calc1` method in the `A` class to be a stand alone, top level function (If you need to update a small function in different lines, try replacing the whole function to save tokens)
+"""
+        ),
+        dict(
+            role="assistant",
+            content="""Here's my plan to implement the requested changes:
+1. Move the `calc1()` method from the `A` class, placing it at the top level, just before the line where its class starts;
+2. Update the copied function to remove references to `self`, now declaring `instance_var` as parameter;
+3. Update ALL call sites of the method `calc1()` to call the new top-level function with the same name, passing `instance_var` as argument;
+
+Here's the CEDARScript script:
+
+{fence[0]}CEDARScript
+-- 1. Move the `calc1` method from the `A` class, placing it at the top level, just before the line where its class starts
+UPDATE FUNCTION "calc1"
+  FROM FILE "/dev/stdin"
+MOVE WHOLE
+INSERT BEFORE LINE "class A:"
+  RELATIVE INDENTATION 0;
+
+-- 2. Replace the whole copied function to remove references to `self` and declare `instance_var` as parameter
+UPDATE FUNCTION "calc1"
+  FROM FILE "/dev/stdin"
+REPLACE WHOLE -- It's better to replace the whole function because the function is small
+WITH CONTENT '''
+@0:def calc1(instance_var: int, a):
+@1:return a * instance_var
+''';
+
+-- 3. Update ALL call sites of the method `calc1` to call the new top-level function with the same name, passing `instance_var` as argument
+UPDATE FUNCTION "calc2" OFFSET 1 -- There are 2 `calc2` methods. We skip 1, meaning we target the second one (which is the one in the `A` class)
+  FROM FILE "/dev/stdin"
+REPLACE SEGMENT
+  STARTING AFTER LINE '# Call calc1...' -- We cannot use line 'c = ["x", str(self.calc1(' as reference marker because there are 2 or more matches for it
+  ENDING BEFORE LINE '5), "xx"]' -- We cannot use line 'c = ["x", str(self.calc1(' as reference marker because there are 2 or more matches for it
+WITH CONTENT '''
+@0:c = ["x", str(calc1(self.instance_var,
+''';
+UPDATE FUNCTION "calc2" OFFSET 1
+  FROM FILE "/dev/stdin"
+REPLACE SEGMENT
+  STARTING AFTER LINE '5), "xx"]'
+  ENDING BEFORE LINE '6), "xx"]'
+WITH CONTENT '''
+@-1:c = ["x", str(calc1(self.instance_var,
+'''; -- Above, we used relative indent level -1 because the line to be replaced is 1 level to the *LEFT* of '5), "xx"]' (the starting reference line)
+-- Note to self: A line marker referencing 'c = ["x", str(self.calc1(' would be ambiguous, since there are 2 or more matches for it. Thus, it's important to use another nearby line marker as reference.
+{fence[1]}""",
+        ),
+    dict(
+            role="user",
+            content="""'''python
+def calc1(a):
+    return a * 7.0
+def calc2(a):
+    c = ["x", str(calc1(
+        5), "xx"]
+    c = ["x", str(calc1(
+        6), "xx"]
+    # Done...
+    return c
+'''
+Refactor the calc1 function to introduce tax: float as first parameter.
+The function should use the new parameter instead of 7.
+Function calc2 should also get this new parameter, but as last parameter and with name base_tax and default value 1.3.
+"""
+        ),
+        dict(
+            role="assistant",
+            content="""Here's my plan to implement the requested changes:
+1. Update the function signature of `calc1()` to add parameter `tax: float` as the first one and use the new parameter instead of `7`;
+2. Update the function signature of `calc2()` to add parameter `base_tax: float = 1.3` as the last one;
+3. Update ALL call sites of `calc1()` to pass `base_tax` as the first argument;
+
+Here's the CEDARScript script:
+
+{fence[0]}CEDARScript
+-- 1. Update the function signature of `calc1()` to add parameter `tax: float` as the first one and use the new parameter instead of `7`
+UPDATE FUNCTION "calc1"
+  FROM FILE "/dev/stdin"
+REPLACE WHOLE
+WITH CONTENT'''
+@0:def calc1(tax: float, a):
+@1:return a * tax
+''';
+
+-- 2. Update the function signature of `calc2()` to add parameter `base_tax: float = 1.3` as the last one
+UPDATE FUNCTION "calc2"
+  FROM FILE "/dev/stdin"
+REPLACE LINE "def calc2(a):"
+WITH CONTENT'''
+@0:def calc2(a, base_tax: float = 1.3):
+''';
+
+-- 3. Update ALL call sites of `calc1()` to pass `base_tax` as the first argument
+UPDATE FUNCTION "calc2"
+  FROM FILE "/dev/stdin"
+REPLACE SEGMENT
+  STARTING AFTER LINE 'def calc2(a, base_tax: float = 1.3):' -- We cannot use line 'c = ["x", str(calc1(' as reference marker because there are 2 or more matches for it
+  ENDING BEFORE LINE '5), "xx"]' -- We cannot use line 'c = ["x", str(calc1(' as reference marker because there are 2 or more matches for it
+WITH CONTENT '''
+@1:c = ["x", str(calc1(base_tax,
+'''; -- Above, we used relative indent level 1 because the line to be replaced is 1 level to the *RIGHT* of 'def calc2(a, base_tax: float = 1.3):' (the starting reference line)
+UPDATE FUNCTION "calc2"
+  FROM FILE "/dev/stdin"
+REPLACE SEGMENT
+  STARTING AFTER LINE '5), "xx"]'
+  ENDING BEFORE LINE '6), "xx"]'
+WITH CONTENT '''
+@-1:c = ["x", str(calc1(base_tax,
+'''; -- Above, we used relative indent level -1 because the line to be replaced is 1 level to the *LEFT* of '5), "xx"]' (the starting reference line)
+-- Note to self: A line marker referencing 'c = ["x", str(calc1(' would be ambiguous, since there are 2 or more matches for it. Thus, it's important to use another nearby line marker as reference.
+{fence[1]}""",
         ),
     ]
