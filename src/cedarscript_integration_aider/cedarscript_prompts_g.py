@@ -108,12 +108,12 @@ module.exports = grammar({
           seq(
             $.singlefile_clause,
             choice(
-              $.update_delete_mos_clause,
+              $.update_delete_region_clause,
               $.update_move_mos_clause,
               seq(
                 choice(
                   $.insert_clause,
-                  $.replace_mos_clause
+                  $.replace_region_clause
                 ),
                 seq('WITH', choice($.content_clause, $.content_from_segment))
               )
@@ -142,11 +142,9 @@ module.exports = grammar({
 
     insert_clause: $ => seq('INSERT', $.relpos_bai),
 
-    // replace_mos_clause, replace_region_clause:
     /**
     Define what to be replaced in the chosen function, class or file.
     */
-    replace_mos_clause: $ => seq('REPLACE', $.marker_or_segment),
     replace_region_clause: $ => seq('REPLACE', $.region_field),
     // ---
 
@@ -157,12 +155,10 @@ module.exports = grammar({
     pattern_field: $ => seq('PATTERN', field('pattern', $.string)),
     goal_field: $ => seq('GOAL', field('goal', $.string)),
 
-    // update_delete_region_clause, update_delete_mos_clause:
     /**
-    *NOT* top-level command. Used inside the `UPDATE` command to specify deletion of code parts.
+    update_delete_region_clause: *NOT* top-level command. Used inside the `UPDATE` command to specify deletion of code parts.
     */
     update_delete_region_clause: $ => seq('DELETE', $.region_field),
-    update_delete_mos_clause: $ => seq('DELETE', $.marker_or_segment),
     // ---
 
     /**
@@ -357,9 +353,9 @@ module.exports = grammar({
 <p>Key points:</p>
 <ol>
 <li>Each line must start with `@N:` where `N` represents the indentation level</li>
-<li>Indentation level should change logically with code structure:
-   - Increment N when entering a new block (class body, function body, if statement, loop, etc.)
-   - Decrement N when exiting a block
+<li>Indentation level *MUST* change logically with code structure:
+   - *MUST* increment N when entering a new block (class body, function body, if statement, loop, etc.)
+   - *MUST* Decrement N when exiting a block
  </li>
 <li>The actual content follows immediately after the prefix (@N:)</li>
 </ol>
@@ -496,8 +492,15 @@ Super careful to avoid syntax errors.</step>
 <li>Try *HARD* to minimize the number of unchanged lines in a CEDARScript command and to have a very *concise* script</li>
 <li>To move code within a file or function, you *MUST* use the `UPDATE ... MOVE ...` construct to minimize script size (DON'T use `WITH CONTENT`)</li>
 <li>Prefer using multiline_string (enclosed in ''') even for single line content (provides better indentation)</li>
-<li>For `CONTENT` blocks, ALWAYS use `relative indent prefix` for each line. Understand that the actual indentation characters (spaces or tabs) will be applied by the CEDARScript engine,
-adjusting your relative indentation to match the target code's style and position</li>
+<li>For `CONTENT` blocks, ALWAYS use `relative indent prefix` (which is the @N: part) for each line. Understand that the actual indentation characters (spaces or tabs) will be applied by the CEDARScript engine,
+adjusting your relative indentation to match the target code's style and position.
+<CRUCIAL>
+Each line must start with `@N:` where `N` represents the indentation level.
+Indentation level *MUST* change logically with code structure:
+   - *MUST* increment N when entering a new block (class body, function body, if statement, loop, etc.)
+   - *MUST* Decrement N when exiting a block
+ </CRUCIAL>
+</li>
 <li>*NEVER* use an ambiguous line (one that appears 2 or more times) as reference. Instead, prefer a different, nearby line.</li>
 </ul>
 
