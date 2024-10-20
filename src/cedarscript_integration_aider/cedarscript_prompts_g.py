@@ -499,6 +499,7 @@ Each line must start with `@N:` where `N` represents the indentation level.
 Indentation level *MUST* change logically with code structure:
    - *MUST* increment N when entering a new block (class body, function body, if statement, loop, etc.)
    - *MUST* Decrement N when exiting a block
+If you get `E999 IndentationError` message or any other indentation error, check the N values you used and retry.
  </CRUCIAL>
 </li>
 <li>*NEVER* use an ambiguous line (one that appears 2 or more times) as reference. Instead, prefer a different, nearby line.</li>
