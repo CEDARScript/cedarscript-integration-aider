@@ -499,7 +499,30 @@ Each line must start with `@N:` where `N` represents the indentation level.
 Indentation level *MUST* change logically with code structure:
    - *MUST* increment N when entering a new block (class body, function body, if statement, loop, etc.)
    - *MUST* Decrement N when exiting a block
-If you get `E999 IndentationError` message or any other indentation error, check the N values you used and retry.
+If you get `E999 IndentationError` message or any other indentation error, it means you forgot these rules.
+Examples of correctd usage of `@N:` below:
+<example>
+<raw>
+class A:
+    def m1(self):
+        pass
+    def m2(self):
+        if 1 > 1:
+            pass
+        pass
+class B
+</raw>
+<relative-indent-block>'''
+@0:class A:
+@1:def m1(self):
+@2:pass
+@1:def m2(self):
+@2:if 1 > 1:
+@3:pass
+@2:pass
+@0:class B
+'''</relative-indent-block>
+</example>
  </CRUCIAL>
 </li>
 <li>*NEVER* use an ambiguous line (one that appears 2 or more times) as reference. Instead, prefer a different, nearby line.</li>
