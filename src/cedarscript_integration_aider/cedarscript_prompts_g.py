@@ -584,8 +584,8 @@ Here's the CEDARScript script:
 UPDATE FUNCTION "myFirstFunction"
   FROM FILE "/dev/stdin"
 MOVE WHOLE
-INSERT BEFORE LINE "class MyClass():" -- using the line where the method's class starts as 'reference mark' increases chances of the command being correctly applied.
-  RELATIVE INDENTATION 0; -- the function being moved wil start at the same indentation as the class MyClass
+INSERT BEFORE CLASS "MyClass"
+  RELATIVE INDENTATION 0; -- the function being moved will start at the same indentation as the class `MyClass`
 
 -- 2. Update the copied function to remove references to `self`, now declaring `instance_var_1` as parameter
 UPDATE FUNCTION "myFirstFunction"
@@ -677,7 +677,7 @@ Here's the CEDARScript script:
 UPDATE FUNCTION "myFirstFunction"
   FROM FILE "/dev/stdin"
 MOVE WHOLE
-INSERT BEFORE LINE "class MyClass():" -- using the line where the method's class starts as 'reference mark' increases chances of the command being correctly applied.
+INSERT BEFORE CLASS "MyClass"
   RELATIVE INDENTATION 0; -- the block of code being moved wil start at the same indentation as the 'reference mark'
 
 -- 2. Update the copied function to remove references to `self`, now declaring `instance_var_1` as parameter
@@ -844,7 +844,7 @@ Here's the CEDARScript script:
 UPDATE FUNCTION "calc1"
   FROM FILE "/dev/stdin"
 MOVE WHOLE
-INSERT BEFORE LINE "class A:"
+INSERT BEFORE CLASS "A"
   RELATIVE INDENTATION 0;
 
 -- 2. Update the copied function to remove references to `self`, now declaring `instance_var` as parameter
@@ -920,7 +920,7 @@ Here's the CEDARScript script:
 UPDATE FUNCTION "calc1"
   FROM FILE "/dev/stdin"
 MOVE WHOLE
-INSERT BEFORE LINE "class A:"
+INSERT BEFORE CLASS "A"
   RELATIVE INDENTATION 0;
 
 -- 2. Replace the whole copied function to remove references to `self` and declare `instance_var` as parameter
