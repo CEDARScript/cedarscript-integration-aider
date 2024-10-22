@@ -54,6 +54,15 @@ CEDARScript has shown remarkable improvements in AI model performance for code r
 | Claude 3.5 Sonnet | diff        | 64.0%     | 76.4%             | n/a           | n/a                | n/a  | n/a                |
 | Gemini 1.5 PRO    | diff-fenced | 49.4%     | 7.9%              | 21            | 93                 | 28.3 | 110.1              |
 
+### Notable Achievements:
+- **Gemini 1.5 _PRO_** with **CEDARScript** outperformed both its diff-fenced format and **Claude 3.5 Sonnet**.
+- Most remarkably, the more cost-effective **Gemini 1.5 _Flash_** model, using **CEDARScript**, outperformed **Claude 3.5 Sonnet**.
+  - It goes to show that even a more affordable model can surpass top-tier competitors when equipped with the _right_ tools.
+
+This suggests that **CEDARScript** can level the playing field, enabling more accessible AI models
+to compete with and even _exceed_ the capabilities of more expensive options in certain coding tasks.
+
+
 ### Individual Test Analysis
 
 **Overall Performance**
@@ -186,14 +195,78 @@ CEDARScript has shown remarkable improvements in AI model performance for code r
 ```
 </details>
 
-### Notable Achievements:
-- **Gemini 1.5 _PRO_** with **CEDARScript** outperformed both its diff-fenced format and **Claude 3.5 Sonnet**.
-- Most remarkably, the more cost-effective **Gemini 1.5 _Flash_** model, using **CEDARScript**, outperformed **Claude 3.5 Sonnet**.
-  - It goes to show that even a more affordable model can surpass top-tier competitors when equipped with the _right_ tools.
+<details>
+<summary>Detailed Analysis</summary>
 
-This suggests that **CEDARScript** can level the playing field, enabling more accessible AI models
-to compete with and even _exceed_ the capabilities of more expensive options in certain coding tasks.
+This overview suggests that the CEDARScript edit format has had a significant positive impact on the task of method extraction,
+with improvements in nearly half of the tests and only a small percentage of tests worsening.
 
+**Improvements:**
+
+36 tests that previously failed now pass. This is a substantial improvement, indicating that CEDARScript is more 
+effective in correctly extracting methods from classes across a wide range of codebases.
+
+**Notable improvements include:**
+- `analyzer_cli_DebugAnalyzer__make_source_table`: Suggests better handling of debug-related code refactoring.
+- `autodetector_MigrationAutodetector__trim_to_apps`: Indicates improved capability in refactoring Django migration-related code.
+- `cuda_cpp_scheduling_CUDACPPScheduling__can_fuse_epilogue_impl`: Shows better performance in handling complex CUDA-related code.
+- `triton_TritonScheduling_define_kernel` and triton_TritonScheduling_generate_node_schedule: Demonstrates improved capability in refactoring GPU computing-related code.
+
+**Minor Improvements:**
+
+3 tests showed minor improvements, such as `checks_BaseModelAdminChecks__check_autocomplete_fields_item`, suggesting 
+slight enhancements in handling Django admin-related code.
+
+**Regressions:**
+
+7 tests that previously passed now fail. While concerning, it's a relatively small number compared to the improvements.
+
+**Notable regressions include:**
+- `feedgenerator_Atom1Feed_add_item_elements`: Suggests potential issues with refactoring feed generation code.
+- `generic_bsd_GenericBsdIfconfigNetwork_parse_inet_line`: Indicates challenges in refactoring network-related parsing code.
+- `introspection_DatabaseIntrospection__parse_column_or_constraint_definition`: Shows difficulties in handling database schema introspection code.
+
+**Stability:**
+
+30 tests remained stable and passing, indicating that CEDARScript maintained performance in many areas, including various 
+Django commands, database operations, and utility functions.
+13 tests remained stable but failing, suggesting that some challenging areas were not addressed by either format.
+These include complex operations like `symbolic_shapes_ShapeEnv_bind_symbols` and `reshaping_BaseReshapingTests_test_unstack`.
+
+**Analysis by Domain:**
+
+- **Web Frameworks (e.g., Django)**: Generally improved, with better handling of model admin checks, configuration, and 
+database operations.
+- **Data Science and ML**: Mixed results. Improvements in areas like clustering operations (`clustering_ops_KMeans__mini_batch_training_op`)
+and data frame handling, but persistent issues in some reshaping operations.
+- **System-level Operations**: Some improvements (e.g., `distribution_DistributionFiles_parse_distribution_file_SUSE`)
+but also regressions (e.g., `generic_bsd_GenericBsdIfconfigNetwork_parse_inet_line`).
+- **GPU and High-Performance Computing**: Significant improvements, especially in `CUDA` and `Triton`-related code.
+
+**Interpretation:**
+
+CEDARScript appears more effective in handling complex code structures, especially in areas related to web frameworks, 
+data processing, and high-performance computing.
+It shows improved capability in understanding class contexts and correctly extracting methods across various domains.
+However, it may introduce new challenges in certain specific areas, possibly due to its different approach to code manipulation.
+
+**Areas for Further Investigation:**
+
+Understanding why certain tests regressed (e.g., `feedgenerator_Atom1Feed_add_item_elements`) could provide insights for improvement.
+
+Analyzing the stable failing tests (e.g., `symbolic_shapes_ShapeEnv_bind_symbols`) to see if CEDARScript can be enhanced 
+to address these persistent issues.
+
+**Conclusion:**
+- The introduction of CEDARScript appears to be a significant improvement for the task of extracting methods from classes.
+- It shows particular strength in handling complex codebases, especially those related to web frameworks, data processing, and high-performance computing.
+- However, care should be taken to address the areas where regressions occurred, particularly in system-level operations and certain parsing tasks.
+- The consistent performance across various domains suggests that CEDARScript offers a more robust and versatile approach to code refactoring.
+
+This analysis indicates that CEDARScript is a promising enhancement to Aider, offering more accurate and comprehensive 
+method extraction capabilities across a wide range of codebases.
+However, it also highlights the need for continued refinement, especially in areas where regressions were observed.
+</details>
 
 ### Benchmark Metrics
 
