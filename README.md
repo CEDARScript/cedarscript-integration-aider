@@ -82,6 +82,8 @@ to compete with and even _exceed_ the capabilities of more expensive options in 
 --- 2024-10-22-05-21-41--gemini-1.5-flash-refactoring-whole
 +++ 2024-10-22-05-13-37--gemini-1.5-flash-refactoring-cedarscript-i0.0.9-e0.3.3
 # ============= Failed Attempts per Test =============
+# N >= 0: it eventually passed after N failed attempts
+# N < 0 : All attempts failed and limit was reached
 
 @@ Improved, now PASSED (36) @@
 ++analyzer_cli_DebugAnalyzer__make_source_table: -4 -> 0
