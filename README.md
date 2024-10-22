@@ -16,6 +16,7 @@ as an [_edit format_](https://aider.chat/docs/benchmarks.html#edit-formats).
 - [Why Use CEDARScript?](#why-use-cedarscript)
 - [Performance Comparison](#performance-comparison)
 - [Individual Test Analysis](#individual-test-analysis)
+- [Detailed Analysis](#detailed-analysis)
 - [Contributing](#contributing)
 - [License](#license)
 
@@ -195,8 +196,7 @@ to compete with and even _exceed_ the capabilities of more expensive options in 
 ```
 </details>
 
-<details>
-<summary>Detailed Analysis</summary>
+#### Detailed Analysis
 
 This overview suggests that the CEDARScript edit format has had a significant positive impact on the task of method extraction,
 with improvements in nearly half of the tests and only a small percentage of tests worsening.
