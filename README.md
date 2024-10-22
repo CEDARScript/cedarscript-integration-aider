@@ -15,6 +15,7 @@ as an [_edit format_](https://aider.chat/docs/benchmarks.html#edit-formats).
 - [Usage](#usage)
 - [Why Use CEDARScript?](#why-use-cedarscript)
 - [Performance Comparison](#performance-comparison)
+- [Individual Test Analysis](#individual-test-analysis)
 - [Contributing](#contributing)
 - [License](#license)
 
@@ -53,6 +54,138 @@ CEDARScript has shown remarkable improvements in AI model performance for code r
 | Claude 3.5 Sonnet | diff        | 64.0%     | 76.4%             | n/a           | n/a                | n/a  | n/a                |
 | Gemini 1.5 PRO    | diff-fenced | 49.4%     | 7.9%              | 21            | 93                 | 28.3 | 110.1              |
 
+### Individual Test Analysis
+
+**Overall Performance**
+
+|             | Count | %     |
+|-------------|-------|-------|
+| Improved    | 39    | 43.8% |
+| Worsened    | 7     | 7.9%  |
+| Stable      | 43    | 48.3% |
+| Total tests | 89    | 100%  |
+
+<details>
+<summary>Individual Test Diff</summary>
+
+```diff
+--- 2024-10-22-05-21-41--gemini-1.5-flash-refactoring-whole
++++ 2024-10-22-05-13-37--gemini-1.5-flash-refactoring-cedarscript-i0.0.9-e0.3.3
+# ============= Failed Attempts per Test =============
+
+@@ Improved, now PASSED (36) @@
+++analyzer_cli_DebugAnalyzer__make_source_table: -4 -> 0
+++autodetector_MigrationAutodetector__trim_to_apps: -4 -> 0
+++backends_ModelBackend_with_perm: -4 -> 0
+++builtin_BuiltinVariable_call_setattr: -4 -> 0
+++checks_BaseModelAdminChecks__check_ordering_item: -4 -> 0
+++checks_BaseModelAdminChecks__check_raw_id_fields_item: -4 -> 0
+++checks_ModelAdminChecks__check_action_permission_methods: -4 -> 0
+++checks_ModelAdminChecks__check_inlines_item: -4 -> 0
+++checks_ModelAdminChecks__check_list_display_item: -4 -> 0
+++clustering_ops_KMeans__mini_batch_training_op: -4 -> 0
+++codeeditor_CodeEditor___get_brackets: -4 -> 0
+++config_AppConfig__path_from_module: -4 -> 0
+++config_ConfigCLI__get_settings_vars: -4 -> 0
+++coordinator_HERETransitDataUpdateCoordinator__parse_transit_response: -4 -> 0
+++cuda_cpp_scheduling_CUDACPPScheduling__can_fuse_epilogue_impl: -4 -> 0
+++dataframeeditor_DataFrameView_next_index_name: -4 -> 0
+++diffsettings_Command_output_hash: -4 -> 0
+++dim2_Dim2CompatTests_test_reductions_2d_axis0: -4 -> 3
+++distribution_DistributionFiles_parse_distribution_file_SUSE: -4 -> 0
+++doc_DocCLI_get_role_man_text: -4 -> 0
+++figure_FigureBase_colorbar: -4 -> 0
+++functional_Functional__conform_to_reference_input: -4 -> 0
+++galaxy_GalaxyCLI_execute_list_collection: -4 -> 0
+++kernel_SpyderKernel_get_fault_text: -4 -> 1
+++main_widget_PylintWidget_parse_output: -4 -> 0
+++methods_BaseMethodsTests_test_where_series: -4 -> 0
+++ogrinspect_Command_add_arguments: -4 -> 0
+++onnxfunction_dispatcher_OnnxFunctionDispatcher__get_aten_name: -4 -> 1
+++operations_DatabaseOperations_last_executed_query: -4 -> 0
+++polar_RadialTick__determine_anchor: -4 -> 0
+++profile_analyzer_cli_ProfileAnalyzer__get_list_profile_lines: -4 -> 0
+++split_cat_SplitCatSimplifier_replace_cat: -4 -> 0
+++split_cat_SplitCatSimplifier_replace_split: -4 -> 0
+++text_CountVectorizer__limit_features: -4 -> 0
+++triton_TritonScheduling_define_kernel: -4 -> 0
+++triton_TritonScheduling_generate_node_schedule: -4 -> 0
+
+@@ Improved, minor (3) @@
++ checks_BaseModelAdminChecks__check_autocomplete_fields_item: 3 -> 0
++ dataloader_DataLoader__is_role: 2 -> 0
++ operations_OracleOperations_convert_extent: 1 -> 0
+
+@@ Worsened, now FAILED (7) @@
+--base_BaseHandler_adapt_method_mode: 0 -> -4
+--feedgenerator_Atom1Feed_add_item_elements: 0 -> -4
+--generic_bsd_GenericBsdIfconfigNetwork_parse_inet_line: 0 -> -4
+--graph_drawer_FxGraphDrawer__stringify_tensor_meta: 0 -> -4
+--group_batch_fusion_GroupLinearFusion_fuse: 0 -> -4
+--inspectdb_Command_normalize_col_name: 0 -> -4
+--introspection_DatabaseIntrospection__parse_column_or_constraint_definition: 0 -> -4
+
+@@ Stable: PASSED (30) @@
+=+autosave_AutosaveForPlugin_get_files_to_recover: 0
+=+base_BaseHandler_check_response: 0
+=+baseconv_BaseConverter_convert: 0
+=+compile_utils_MetricsContainer__get_metric_object: 0
+=+concat__Concatenator__clean_keys_and_objs: 0
+=+config_NetworkConfig_parse: 0
+=+csrf_CsrfViewMiddleware__set_csrf_cookie: 0
+=+dumpdata_Command_add_arguments: 0
+=+finders_FileSystemFinder_check: 0
+=+gateway_Gateway_get_and_delete_all_sms: 0
+=+getitem_BaseGetitemTests_test_get: 0
+=+grad_scaler_GradScaler__unscale_grads_: 0
+=+gradient_checker_GradientChecker__assertInferTensorChecks: 0
+=+graph_MigrationGraph_iterative_dfs: 0
+=+grpc_debug_server_EventListenerBaseServicer__process_tensor_event_in_chunks: 0
+=+i18n_JavaScriptCatalog_get_paths: 0
+=+inspectdb_Command_get_field_type: 0
+=+inspectdb_Command_get_meta: 0
+=+introspection_DatabaseIntrospection__get_column_collations: 0
+=+load_v1_in_v2__EagerSavedModelLoader__extract_signatures: 0
+=+makemessages_Command_add_arguments: 0
+=+makemigrations_Command_add_arguments: 0
+=+migrate_Command_add_arguments: 0
+=+operations_DatabaseOperations_bulk_insert_sql: 0
+=+operations_DatabaseOperations_check_expression_support: 0
+=+reshaping_BaseReshapingTests_test_concat_mixed_dtypes: 0
+=+schema_DatabaseSchemaEditor_quote_value: 0
+=+shell_Command_python: 0
+=+special_RunSQL__run_sql: 0
+=+weather_NWSWeather__forecast: 0
+
+@@ Stable: FAILED (13) @@
+=-autodetector_MigrationAutodetector_check_dependency: -4 -> -4
+=-checks_ModelAdminChecks__check_list_editable_item: -4 -> -4
+=-common_methods_invocations_foreach_inputs_sample_func__sample_rightmost_arg: -4 -> -4
+=-common_utils_TestCase_genSparseTensor: -4 -> -4
+=-doc_DocCLI_display_plugin_list: -4 -> -4
+=-generator_GenOpTestCase_out_variant_op_test_case_generator: -4 -> -4
+=-options_ModelAdmin_message_user: -4 -> -4
+=-patches__Curve__get_arrow_wedge: -4 -> -4
+=-quiver_Barbs__make_barbs: -4 -> -4
+=-reshaping_BaseReshapingTests_test_unstack: -4 -> -4
+=-sharding_policies_MaxShardSizePolicy__add_partition: -4 -> -4
+=-split_cat_SplitCatSimplifier_get_transform_params: -4 -> -4
+=-symbolic_shapes_ShapeEnv_bind_symbols: -4 -> -4
+
+# =============          TOTALS          =============
+# IMPROVED: 39
+#    Now PASSES: 36
+#    Minor     : 3
+# WORSENED: 7
+#    Now FAILED: 7
+#    Minor     : 0
+# STABLE  : 43
+#    PASSED: 30
+#    FAILED: 13
+# TOTAL  : 89
+```
+</details>
+
 ### Notable Achievements:
 - **Gemini 1.5 _PRO_** with **CEDARScript** outperformed both its diff-fenced format and **Claude 3.5 Sonnet**.
 - Most remarkably, the more cost-effective **Gemini 1.5 _Flash_** model, using **CEDARScript**, outperformed **Claude 3.5 Sonnet**.
@@ -62,7 +195,7 @@ This suggests that **CEDARScript** can level the playing field, enabling more ac
 to compete with and even _exceed_ the capabilities of more expensive options in certain coding tasks.
 
 
-### Raw Metrics
+### Benchmark Metrics
 
 <details>
 <summary>**Sonnet 3.5 + `diff`**</summary>
