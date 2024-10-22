@@ -273,7 +273,7 @@ However, it also highlights the need for continued refinement, especially in are
 ### Benchmark Metrics
 
 <details>
-<summary>**Sonnet 3.5 + `diff`**</summary>
+<summary>Sonnet 3.5 + diff</summary>
 
 ```yaml
 - dirname: refac-claude-3.5-sonnet-diff-not-lazy
@@ -285,7 +285,7 @@ However, it also highlights the need for continued refinement, especially in are
 </details>
 
 <details>
-<summary>Gemini 1.5 PRO + `diff-fenced` (leaderboard site)</summary>
+<summary>Gemini 1.5 PRO + diff-fenced (leaderboard site)</summary>
 
 ```yaml
 - dirname: refac-gemini
@@ -297,7 +297,7 @@ However, it also highlights the need for continued refinement, especially in are
 </details>
 
 <details>
-<summary>Gemini 1.5 PRO + `diff-fenced` (own tests)</summary>
+<summary>Gemini 1.5 PRO + diff-fenced (own tests)</summary>
 
 ```yaml
 - dirname: 2024-10-05-00-43-21--diff-fenced-Gemini-Refactoring
@@ -327,7 +327,7 @@ However, it also highlights the need for continued refinement, especially in are
 </details>
 
 <details>
-<summary>Gemini 1.5 PRO + `CEDARScript`</summary>
+<summary>Gemini 1.5 PRO + CEDARScript</summary>
 
 ```yaml
 - dirname: 2024-10-19-22-48-07--cedarscript-0.3.1-refactoring-gemini1.5pro
@@ -355,10 +355,41 @@ However, it also highlights the need for continued refinement, especially in are
 </details>
 
 <details>
-<summary>Gemini 1.5 _Flash_ + `CEDARScript`</summary>
+<summary>Gemini 1.5 Flash + whole</summary>
 
 ```yaml
-- dirname: 2024-10-20-00-33-27--cedarscript-0.3.1-refactoring-gemini1.5flash
+- dirname: 2024-10-22-05-21-41--gemini-1.5-flash-refactoring-whole
+  test_cases: 89
+  model: gemini/gemini-1.5-flash-002
+  edit_format: whole
+  commit_hash: feb1c38
+  pass_rate_1: 41.6
+  pass_rate_2: 42.7
+  pass_rate_3: 43.8
+  pass_rate_4: 44.9
+  percent_cases_well_formed: 100.0
+  error_outputs: 0
+  num_malformed_responses: 0
+  num_with_malformed_responses: 0
+  user_asks: 558
+  lazy_comments: 28
+  syntax_errors: 106
+  indentation_errors: 20
+  exhausted_context_windows: 0
+  test_timeouts: 0
+  command: aider --model gemini/gemini-1.5-flash-002
+  date: 2024-10-22
+  versions: 0.59.2.dev
+  seconds_per_case: 231.1
+  total_cost: 2.3894
+```
+</details>
+
+<details>
+<summary>Gemini 1.5 Flash + CEDARScript</summary>
+
+```yaml
+- dirname: 2024-10-20-00-33-27--cedarscript-0.3.1-refactoring-gemini-1.5-flash
   test_cases: 89
   model: gemini/gemini-1.5-flash-latest
   edit_format: cedarscript-g
