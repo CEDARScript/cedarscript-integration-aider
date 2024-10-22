@@ -715,6 +715,15 @@ Notes:
             role="user",
             content="""
 '''python
+class GreeterClone:
+    def __init__(self):
+        pass
+    def print_greeting_number(self):
+        pass
+    def print_with_prefix(self, prefix: str, name: str):
+        pass
+    def greet(self, name):
+        pass
 class Greeter:
     def __init__(self):
         pass
@@ -744,23 +753,26 @@ Here's the CEDARScript script:
 
 {fence[0]}CEDARScript
 -- 1. Add instance variable `greeting_count: int` to the `Greeter` class to keep track of the greeting count
-UPDATE FUNCTION "__init__"
+UPDATE CLASS "Greeter" -- As method `__init__` exists in more than 1 class, we specify which one we want to reference
   FROM FILE "/dev/stdin"
-REPLACE BODY -- no need to preserve the body, so we replace it
+REPLACE FUNCTION "__init__" -- Replace the entire function, as there's nothing to keep
 WITH CONTENT '''
-@0:self.greeting_count: int = 0
+@0:def __init__(self):
+@1:self.greeting_count: int = 0
 ''';
 
 -- 2. Implement the `print_with_prefix()` method to print parameter `name` prefixed with the `prefix` parameter;
-UPDATE FUNCTION "print_with_prefix"
+UPDATE CLASS "Greeter" -- As method `print_with_prefix` exists in more than 1 class, we specify which one we want to reference
   FROM FILE "/dev/stdin"
-REPLACE BODY -- no need to preserve the body, so we replace it
+REPLACE FUNCTION "print_with_prefix" -- no need to preserve it, so we replace it
 WITH CONTENT '''
-@0:print(f"{{prefix}}{{name}}")
+@0:def print_with_prefix(self, prefix: str, name: str):
+@1:print(f"{{prefix}}{{name}}")
 ''';
 
 -- 3. Insert a call to the `print_with_prefix()` method at the top of the last method (`greet`);
-UPDATE FILE "/dev/stdin"
+UPDATE CLASS "Greeter" -- As method `greet` exists in more than 1 class, we specify which one we want to reference
+  FROM FILE "/dev/stdin"
 INSERT INSIDE FUNCTION "greet" TOP -- at the TOP of the function body
 -- The function body is the reference indent level; `@0:` means to use that same level 
 WITH CONTENT '''
@@ -768,7 +780,8 @@ WITH CONTENT '''
 ''';
 
 -- 4. Insert code at the bottom of the `greet()` method to increment the greeting count and print it.
-UPDATE FILE "/dev/stdin"
+UPDATE CLASS "Greeter" -- As method `greet` exists in more than 1 class, we specify which one we want to reference
+  FROM FILE "/dev/stdin"
 INSERT INSIDE FUNCTION "greet" BOTTOM -- at the BOTTOM of the function body
 -- The function body is the reference indent level; `@0:` means to use that same level 
 WITH CONTENT '''
@@ -837,26 +850,26 @@ Here's the CEDARScript script:
 
 {fence[0]}CEDARScript
 -- 1. Move the `calc1` method from the `A` class, placing it at the top level, just before the line where its class starts
-UPDATE FUNCTION "calc1"
+UPDATE CLASS "A" -- As method `calc1` exists in more than 1 class, we specify which one we want to reference
   FROM FILE "/dev/stdin"
-MOVE WHOLE
+MOVE FUNCTION "calc1"
 INSERT BEFORE CLASS "A"
   RELATIVE INDENTATION 0;
 
 -- 2. Update the copied function to remove references to `self`, now declaring `instance_var` as parameter
-UPDATE FUNCTION "calc1"
+UPDATE FUNCTION "calc1" OFFSET 1 -- Now, `calc1` exists as a top-level function before class `A` (we just moved it), but there's also a method with the same name inside class `A0`, so we use `OFFSET 1` to skip the first match (the one from `A0`)
   FROM FILE "/dev/stdin"
 REPLACE LINE "def calc1(self, a):"
 WITH CONTENT '''
 @0:def calc1(instance_var: int, a):
 ''';
-UPDATE FUNCTION "calc1"
+UPDATE FUNCTION "calc1" OFFSET 1 -- to skip 1 match (the one from `A0`)
   FROM FILE "/dev/stdin"
 REPLACE LINE "after 'self') by a value stored in 'self.instance_var'."
 WITH CONTENT '''
 @0:after 'instance_var') by a value stored in 'instance_var'.
 ''';
-UPDATE FUNCTION "calc1"
+UPDATE FUNCTION "calc1" OFFSET 1 -- to skip 1 match (the one from `A0`)
   FROM FILE "/dev/stdin"
 REPLACE LINE 'return a * self.instance_var'
 WITH CONTENT '''
@@ -913,14 +926,14 @@ Here's the CEDARScript script:
 
 {fence[0]}CEDARScript
 -- 1. Move the `calc1` method from the `A` class, placing it at the top level, just before the line where its class starts
-UPDATE FUNCTION "calc1"
+UPDATE CLASS "A" -- As method `calc1` exists in more than 1 class, we specify which one we want to reference
   FROM FILE "/dev/stdin"
-MOVE WHOLE
+MOVE FUNCTION "calc1"
 INSERT BEFORE CLASS "A"
   RELATIVE INDENTATION 0;
 
 -- 2. Replace the whole copied function to remove references to `self` and declare `instance_var` as parameter
-UPDATE FUNCTION "calc1"
+UPDATE FUNCTION "calc1" OFFSET 1 -- Now, `calc1` exists as a top-level function before class `A` (we just moved it), but there's also a method with the same name inside class `A0`, so we use `OFFSET 1` to skip the first match (the one from `A0`)
   FROM FILE "/dev/stdin"
 REPLACE WHOLE -- It's better to replace the whole function because the function is small
 WITH CONTENT '''
