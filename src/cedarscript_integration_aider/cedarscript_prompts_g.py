@@ -607,8 +607,7 @@ WITH CONTENT '''
 ''';
 
 -- 3. Update ALL call sites of the method `myFirstFunction` to call the new top-level function with the same name, passing `instance_var_1` as argument
-UPDATE FUNCTION "anotherFunction"
-  FROM FILE "/dev/stdin"
+UPDATE FILE "/dev/stdin"
 REPLACE SEGMENT
   STARTING AFTER LINE "def anotherFunction(self, name: str, age: int):"
   ENDING BEFORE LINE '''c = "x" + '"' + "'" + "z"''' -- multi-line string used to avoid escaping `'` and `"`
@@ -616,14 +615,12 @@ WITH CONTENT '''
 @1:b = checkVal(45, "strict", myFirstFunction(instance_var_1, name, age), 8, "tops")
 @1:bb = checkVal(7, "lax", myFirstFunction(instance_var_1, name, age), 2, "bottom")
 ''';
-UPDATE FUNCTION "anotherFunction"
-  FROM FILE "/dev/stdin"
+UPDATE FILE "/dev/stdin"
 REPLACE LINE 'd = checkVal(45, "strict", self.myFirstFunction(name, age), 8, "tops")'
 WITH CONTENT '''
 @0:d = checkVal(45, "strict", myFirstFunction(instance_var_1, name, age), 8, "tops")
 ''';
-UPDATE FUNCTION "anotherFunction"
-  FROM FILE "/dev/stdin"
+UPDATE FILE "/dev/stdin"
 REPLACE SEGMENT
   STARTING AT LINE \"\"\"'9"f', "as'df", self.myFirstFunction(name, age))\"\"\" -- multi-line string used to avoid escaping `'` and `"`
   ENDING BEFORE LINE 'return b * 3'
@@ -699,8 +696,7 @@ WITH CONTENT '''
 ''';
 
 -- 3. Update ALL call sites of the method `myFirstFunction` to call the new top-level function with the same name, passing `instance_var_1` as argument
-UPDATE FUNCTION "anotherFunction"
-  FROM FILE "/dev/stdin"
+UPDATE FILE "/dev/stdin"
 REPLACE SEGMENT
   STARTING AFTER LINE "# Check and store in 'b' and 'bb'"
   ENDING BEFORE LINE "return b + bb"
@@ -990,16 +986,14 @@ WITH CONTENT'''
 ''';
 
 -- 2. Update the function signature of `calc2()` to add parameter `base_tax: float = 1.3` as the last one
-UPDATE FUNCTION "calc2"
-  FROM FILE "/dev/stdin"
+UPDATE FILE "/dev/stdin"
 REPLACE LINE "def calc2(a):"
 WITH CONTENT'''
 @0:def calc2(a, base_tax: float = 1.3):
 ''';
 
 -- 3. Update ALL call sites of `calc1()` to pass `base_tax` as the first argument
-UPDATE FUNCTION "calc2"
-  FROM FILE "/dev/stdin"
+UPDATE FILE "/dev/stdin"
 REPLACE SEGMENT
   STARTING AFTER LINE 'def calc2(a, base_tax: float = 1.3):' -- We cannot use line 'c = ["x", str(calc1(' as reference marker because there are 2 or more matches for it
   ENDING BEFORE LINE '5), "xx"]' -- We cannot use line 'c = ["x", str(calc1(' as reference marker because there are 2 or more matches for it
