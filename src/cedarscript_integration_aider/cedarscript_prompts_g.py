@@ -895,6 +895,7 @@ class A0:
         return a * self.instance_var
     def calc2(self, a):
         # Call calc1...
+        # I'm a bad line, get rid of me!
         c = self.calc1(5)
 class A:
     def __init__(self, v: int):
@@ -912,7 +913,7 @@ class A:
         # Done...
         return c
 '''
-Refactor the `calc1` method in the `A` class to be a stand alone, top level function (If you need to update a small function in different lines, try replacing the whole function to save tokens)
+Refactor the `calc1` method in the `A` class to be a stand alone, top level function. Also, there's a line that clearly needs to be removed.
 """
         ),
         dict(
@@ -921,6 +922,7 @@ Refactor the `calc1` method in the `A` class to be a stand alone, top level func
 1. Move the `calc1()` method from the `A` class, placing it at the top level, just before the line where its class starts;
 2. Update the copied function to remove references to `self`, now declaring `instance_var` as parameter;
 3. Update ALL call sites of the method `calc1()` to call the new top-level function with the same name, passing `instance_var` as argument;
+4. Delete the bad line;
 
 Here's the CEDARScript script:
 
@@ -959,6 +961,10 @@ WITH CONTENT '''
 @-1:c = ["x", str(calc1(self.instance_var,
 '''; -- Above, we used relative indent level -1 because the line to be replaced is 1 level to the *LEFT* of '5), "xx"]' (the starting reference line)
 -- Note to self: A line marker referencing 'c = ["x", str(self.calc1(' would be ambiguous, since there are 2 or more matches for it. Thus, it's important to use another nearby line marker as reference.
+
+-- 4. Delete the bad line
+UPDATE FILE "/dev/stdin"
+DELETE LINE "# I'm a bad line, get rid of me!";
 {fence[1]}""",
         ),
     dict(
@@ -1022,6 +1028,67 @@ WITH CONTENT '''
 @-1:c = ["x", str(calc1(base_tax,
 '''; -- Above, we used relative indent level -1 because the line to be replaced is 1 level to the *LEFT* of '5), "xx"]' (the starting reference line)
 -- Note to self: A line marker referencing 'c = ["x", str(calc1(' would be ambiguous, since there are 2 or more matches for it. Thus, it's important to use another nearby line marker as reference.
+{fence[1]}""",
+        ),
+    dict(
+            role="user",
+            content="""'''python
+class A:
+    def _calc(self, a):
+        return a
+    def _check(self, a: int, b, c):
+        if a > 0:
+            return self._calc(
+                "a thing or two"
+            )
+        else:
+            return list(
+                self._calc(
+                    self._candidate(
+                        a, "string 1", 4
+                    )
+                    for index, item in enumerate(a.the_elements)
+                )
+            )
+
+    def _candidate(self, a, b, c):
+        return a
+'''
+Refactor the `_candidate` method to be a stand alone, top level function.
+"""
+        ),
+        dict(
+            role="assistant",
+            content="""Here's my plan to implement the requested changes:
+1. Move the `_candidate()` method from the `A` class, placing it at the top level, just before the line where its class starts;
+2. Update the copied function to remove references to `self`;
+3. Update ALL call sites of the method `_candidate()` to call the new top-level function with the same name;
+
+Here's the CEDARScript script:
+
+{fence[0]}CEDARScript
+-- 1. Move the `_candidate()` method from the `A` class, placing it at the top level, just before the line where its class starts
+UPDATE CLASS "A" -- As method `calc1` exists in more than 1 class, we specify which one we want to reference
+  FROM FILE "/dev/stdin"
+MOVE FUNCTION "_candidate"
+INSERT BEFORE CLASS "A"
+  RELATIVE INDENTATION 0;
+
+-- 2. Update the copied function to remove references to `self`
+UPDATE FUNCTION "_candidate"
+  FROM FILE "/dev/stdin"
+REPLACE LINE "def _candidate(self, a, b, c):"
+WITH CONTENT '''
+@0:def _candidate(a, b, c):
+''';
+
+-- 3. Update ALL call sites of the method `_candidate()` to call the new top-level function with the same name
+UPDATE FUNCTION "_check"
+  FROM FILE "/dev/stdin"
+REPLACE LINE 'self._candidate(' -- There's only 1 call site and this line marker is unambiguous, so it's more concise to just replace a LINE instead of a SEGMENT
+WITH CONTENT '''
+@0:_candidate(
+''';
 {fence[1]}""",
         ),
     ]
