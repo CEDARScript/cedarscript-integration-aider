@@ -490,7 +490,9 @@ Super careful to avoid syntax errors.</step>
 <li>Each CEDARScript command is applied in the same order as they appear. If a command fails to be applied, all commands before it were correctly applied (don't retry those!). Once a command is applied on a file, the next command will see the update version of that file, with all changes that were applied by earlier commands.</li>
 <li>It's crucial to strive to provide *as concise and small as possible*, targeted CEDARScript commands that each change a given aspect of the program, so that humans can easily understand what's changing</li>
 <li>Try *HARD* to minimize the number of unchanged lines in a CEDARScript command and to have a very *concise* script</li>
-<li>To move code within a file or function, you *MUST* use the `UPDATE ... MOVE ...` construct to minimize script size (DON'T use `WITH CONTENT`)</li>
+<li>To move code within a file or function, you *MUST* use the `UPDATE ... MOVE ...` construct to minimize script size (DON'T use `WITH CONTENT`)
+<IMPORTANT>You wmust try the alternative form `UPDATE CLASS..MOVE FUNCTION` (instead of `UPDATE FUNCTION..MOVE WHOLE`) if the latter fails</IMPORTANT>
+</li>
 <li>Prefer using multiline_string (enclosed in ''') even for single line content (provides better indentation)</li>
 <li>For `CONTENT` blocks, ALWAYS use `relative indent prefix` (which is the @N: part) for each line. Understand that the actual indentation characters (spaces or tabs) will be applied by the CEDARScript engine,
 adjusting your relative indentation to match the target code's style and position.
@@ -1068,7 +1070,68 @@ Here's the CEDARScript script:
 
 {fence[0]}CEDARScript
 -- 1. Move the `_candidate()` method from the `A` class, placing it at the top level, just before the line where its class starts
-UPDATE CLASS "A" -- As method `calc1` exists in more than 1 class, we specify which one we want to reference
+UPDATE FUNCTION "_candidate" -- As method `_candidate` only exists in one place, it's unambiguous, so we ought to directly reference it (by using `UPDATE FUNCTION..MOVE WHOLE`).
+  FROM FILE "/dev/stdin"
+MOVE WHOLE
+INSERT BEFORE CLASS "A"
+  RELATIVE INDENTATION 0;
+
+-- 2. Update the copied function to remove references to `self`
+UPDATE FUNCTION "_candidate"
+  FROM FILE "/dev/stdin"
+REPLACE LINE "def _candidate(self, a, b, c):"
+WITH CONTENT '''
+@0:def _candidate(a, b, c):
+''';
+
+-- 3. Update ALL call sites of the method `_candidate()` to call the new top-level function with the same name
+UPDATE FUNCTION "_check"
+  FROM FILE "/dev/stdin"
+REPLACE LINE 'self._candidate(' -- There's only 1 call site and this line marker is unambiguous, so it's more concise to just replace a LINE instead of a SEGMENT
+WITH CONTENT '''
+@0:_candidate(
+''';
+{fence[1]}""",
+        ),
+    dict(
+            role="user",
+            content="""'''python
+class A:
+    def _calc(self, a):
+        return a
+    def _check(self, a: int, b, c):
+        if a > 0:
+            return self._calc(
+                "a thing or two"
+            )
+        else:
+            return list(
+                self._calc(
+                    self._candidate(
+                        a, "string 1", 4
+                    )
+                    for index, item in enumerate(a.the_elements)
+                )
+            )
+
+    def _candidate(self, a, b, c):
+        return a
+'''
+Refactor the `_candidate` method to be a stand alone, top level function.
+"""
+        ),
+        dict(
+            role="assistant",
+            content="""Here's my plan to implement the requested changes:
+1. Move the `_candidate()` method from the `A` class, placing it at the top level, just before the line where its class starts;
+2. Update the copied function to remove references to `self`;
+3. Update ALL call sites of the method `_candidate()` to call the new top-level function with the same name;
+
+Here's the CEDARScript script:
+
+{fence[0]}CEDARScript
+-- 1. Move the `_candidate()` method from the `A` class, placing it at the top level, just before the line where its class starts
+UPDATE CLASS "A" -- As method `_candidate` only exists in one place, it's unambiguous, but this time we wmust try the alternative form `UPDATE CLASS..MOVE FUNCTION` (instead of `UPDATE FUNCTION..MOVE WHOLE`) because the latter failed last time we tried.
   FROM FILE "/dev/stdin"
 MOVE FUNCTION "_candidate"
 INSERT BEFORE CLASS "A"
