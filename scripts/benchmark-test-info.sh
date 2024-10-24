@@ -30,6 +30,5 @@ benchmark_ls() {
     echo "Failed runs : $failures"
 }
 alias benchmark.ls=benchmark_ls "$@"
-test "$#" -eq 0 && exit
-
-benchmark_ls "$@"
+test "$#" -eq 0 || \
+  benchmark_ls "$@"
