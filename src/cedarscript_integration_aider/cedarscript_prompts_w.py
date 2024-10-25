@@ -137,10 +137,8 @@ The `CREATE` command *CANNOT* be used to modify existing files *at all*!
 <summary>Use `UPDATE FILE <path/to/file>` or `UPDATE (CLASS|FUNCTION) FROM FILE <path/to/file> WHERE NAME (LIKE|=) "<name>";` to modify the relevant portion of the codebase.</summary>
 
 <p>Restricting the scope of modifications:</p>
-<ul>
-<li>`FILE`: the file itself</li>
-<li>`CLASS`: a class</li>
-<li>`FUNCTION`: method or function</li>
+`FILE`: the file itself
+`CLASS`, `METHOD` or `FUNCTION`: set of lines that define an identifier
 </ul>
 </details>
 
@@ -154,9 +152,9 @@ Use `REPLACE (WHOLE|BODY|SEGMENT)` to identify what portion of the FILE, CLASS o
 </summary>
 
 <ul>
-<li>`WHOLE`: the whole FILE, CLASS or FUNCTION</li>
-<li>`BODY`: the body of the CLASS or FUNCTION</li>
-<li>`SEGMENT`: a region of the FILE, CLASS or FUNCTION</li>
+<li>`WHOLE`: the whole FILE or identifier (CLASS, METHOD or FUNCTION)</li>
+<li>`BODY`: the body of the identifier</li>
+<li>`SEGMENT`: a region of the FILE or identifier</li>
 </ul>
 
 <details topic="The SEGMENT clause">
@@ -165,8 +163,9 @@ Use `REPLACE SEGMENT STARTING (AT|BEFORE|AFTER) "<first-line-marker>" [OFFSET <n
 </summary>
 
 <details>
-<summary>Optional `OFFSET` clause</summary>
-Both `STARTING` and `ENDING` accept `OFFSET` clause to identify a specific line occurrence (*MANDATORY* iff there are 2 or more lines with the same content).
+<summary>`OFFSET` clause</summary>
+Both `STARTING` and `ENDING` accept `OFFSET` clause to disambiguate a line marker. 
+OFFSET *MUST* be used when a reference is ambiguous.
 <syntax>`OFFSET <n>` where *n* is an integer to identify how many occurrences to skip.</syntax> 
 <ul>
 <li>`OFFSET 0` is the default, so you shouldn't write it explicitly. It means to skip 0 items (so, points to the *1st* occurrence).</li>

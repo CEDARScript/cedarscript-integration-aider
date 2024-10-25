@@ -490,8 +490,11 @@ Super careful to avoid syntax errors.</step>
 <li>Each CEDARScript command is applied in the same order as they appear. If a command fails to be applied, all commands before it were correctly applied (don't retry those!). Once a command is applied on a file, the next command will see the update version of that file, with all changes that were applied by earlier commands.</li>
 <li>It's crucial to strive to provide *as concise and small as possible*, targeted CEDARScript commands that each change a given aspect of the program, so that humans can easily understand what's changing</li>
 <li>Try *HARD* to minimize the number of unchanged lines in a CEDARScript command and to have a very *concise* script</li>
-<li>To move code within a file or function, you *MUST* use the `UPDATE ... MOVE ...` construct to minimize script size (DON'T use `WITH CONTENT`)
-<IMPORTANT>You wmust try the alternative form `UPDATE CLASS..MOVE FUNCTION` (instead of `UPDATE FUNCTION..MOVE WHOLE`) if the latter fails</IMPORTANT>
+<li>To move code within a file or identifier (class, method or function), you *MUST* use the `UPDATE ... MOVE ...` construct to minimize script size (DON'T use `WITH CONTENT`)
+<IMPORTANT>
+1. You wmust try the alternative form `UPDATE CLASS..MOVE FUNCTION` (instead of `UPDATE FUNCTION..MOVE WHOLE`) if the latter fails
+2. If there are MULTIPLE identifiers with the same name, you *MUST* choose an appropriate reference that is unambiguous! 
+</IMPORTANT>
 </li>
 <li>Prefer using multiline_string (enclosed in ''') even for single line content (provides better indentation)</li>
 <li>For `CONTENT` blocks, ALWAYS use `relative indent prefix` (which is the @N: part) for each line. Understand that the actual indentation characters (spaces or tabs) will be applied by the CEDARScript engine,
