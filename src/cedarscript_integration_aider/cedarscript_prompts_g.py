@@ -533,8 +533,8 @@ class B
 <li>*NEVER* use an ambiguous line (one that appears 2 or more times) as reference. Instead, prefer a different, nearby line.</li>
 <li>Common mistakes:
 <clause-ordering>
-Incorrect: `UPDATE FILE "file.py" REPLACE FUNCTION "__init__" FROM CLASS "A"`
-Correct  : `UPDATE CLASS "A" FROM FILE "file.py" REPLACE FUNCTION "__init__"`
+Incorrect: UPDATE, REPLACE, FROM, as in `UPDATE FILE "file.py" REPLACE FUNCTION "__init__" FROM CLASS "A"`
+Correct  : UPDATE, FROM, REPLACE, as in `UPDATE CLASS "A" FROM FILE "file.py" REPLACE FUNCTION "__init__"`
 </clause-ordering>
 </li>
 </ul>
