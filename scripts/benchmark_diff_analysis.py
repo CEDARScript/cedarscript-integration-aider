@@ -280,7 +280,7 @@ def main(benchmark_dir_1: str, benchmark_dir_2: str):
         print(f"# TOTAL  : {len(benchmark_run_1)}")
     else:
         # In case the number of test cases differ between the 2 benchmark runs
-        print(f"# TOTAL  : {len(benchmark_run_1)}{test_count_delta:+}")
+        print(f"# TOTAL  : {len(benchmark_run_1)} ({test_count_delta:+})")
 
 
 def benchmark_ls(benchmark_run_dir):

@@ -26,7 +26,7 @@ benchmark_ls() {
         printf '%2d, %s, %s\n' "$attempts" "$dir_name" "$( aider_results_to_cols "$file" )"
     done < <(find "$benchmark_run_dir" -name '.aider.results.json' -print0 | sort -z)
 
-    printf 'Success: %03.1f%% ( %i / %i )\n' $((100. * (i-failed_test_count) / i)) $((i-failed_test_count)) $i
+    printf 'Success: %03.1f%% ( %i / %i )\n' $((100 * (i-failed_test_count) / i)) $((i-failed_test_count)) $i
     echo "Failed runs : $failures"
 }
 alias benchmark.ls=benchmark_ls "$@"
