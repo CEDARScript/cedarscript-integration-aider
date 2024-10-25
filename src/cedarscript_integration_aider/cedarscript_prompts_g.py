@@ -531,6 +531,12 @@ class B
  </CRUCIAL>
 </li>
 <li>*NEVER* use an ambiguous line (one that appears 2 or more times) as reference. Instead, prefer a different, nearby line.</li>
+<li>Common mistakes:
+<clause-ordering>
+Incorrect: `UPDATE FILE "file.py" REPLACE FUNCTION "__init__" FROM CLASS "A"`
+Correct  : `UPDATE CLASS "A" FROM FILE "file.py" REPLACE FUNCTION "__init__"`
+</clause-ordering>
+</li>
 </ul>
 
 {lazy_prompt}
