@@ -285,11 +285,11 @@ def main(benchmark_dir_1: str, benchmark_dir_2: str):
     tokens_sent_2 = sum(t.sent_tokens for t in benchmark_run_2.values())
     tokens_received_2 = sum(t.received_tokens for t in benchmark_run_2.values())
     duration_2 = sum(t.duration for t in benchmark_run_2.values())
-    
+
+    print(f"# DURATION (s)    : {round(duration_1):3,} ({duration_2 - duration_1:+.1f}, {(duration_2 - duration_1)*100/duration_1:+.1f}%)")
     print(f"# TOTAL TEST COUNT: {total_tests}{f' ({test_count_delta:+})' if test_count_delta else ''}")
     print(f"# TOKENS SENT     : {tokens_sent_1:,} ({tokens_sent_2 - tokens_sent_1:+,}, {(tokens_sent_2 - tokens_sent_1)*100/tokens_sent_1:+.1f}%)")
     print(f"# TOKENS RECEIVED : {tokens_received_1:7,} ({tokens_received_2 - tokens_received_1:+6,}, {(tokens_received_2 - tokens_received_1)*100/tokens_received_1:+.1f}%)")
-    print(f"# DURATION (s)    : {round(duration_1):3,} ({duration_2 - duration_1:+.1f}, {(duration_2 - duration_1)*100/duration_1:+.1f}%)")
 
 # REMOVED : 101 (75.9% of total)
 #    PASSED: 55 (41.4% of total)
