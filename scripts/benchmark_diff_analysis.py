@@ -10,6 +10,16 @@ from typing import NamedTuple, Union
 
 from datetime import timedelta
 
+def _get_visual_indicator(percent_change: float | None) -> str:
+    """Generate a visual indicator string based on percentage change."""
+    if percent_change is None:
+        return ""
+    if percent_change == 0:
+        return ""
+    # Convert to absolute value to determine length, but keep sign for direction
+    abs_change = abs(percent_change)
+    indicator_length = min(20, max(1, int(abs_change / 10)))  # 1 char per 10% change, max 20
+    return (" " + ("+" if percent_change > 0 else "-") * indicator_length)
 def main(benchmark_dir_1: str, benchmark_dir_2: str):
     """
     Main function to compare two benchmark runs and print the analysis.
@@ -169,19 +179,18 @@ def main(benchmark_dir_1: str, benchmark_dir_2: str):
     print()
     print("# ============= PERFORMANCE METRICS ============")
     print(f"# TOTAL TEST COUNT : {len(benchmark_run_2):10d}{f' ({test_count_delta:+3d})' if test_count_delta else ''}")
-    print(f"# DURATION         :    {str(timedelta(seconds=int(duration_2)))} ({'-' if duration_2 < duration_1 else '+'}  {str(timedelta(seconds=int(abs(duration_2 - duration_1))))}, {(duration_2 - duration_1)*100/duration_1:+4.0f}%)")
-    print(f"# TOKENS SENT      : {tokens_sent_2:10,} ({tokens_sent_2 - tokens_sent_1:+10,}, {(tokens_sent_2 - tokens_sent_1)*100/tokens_sent_1:+4.0f}%)")
-    print(f"# TOKENS RECEIVED  : {tokens_received_2:10,} ({tokens_received_2 - tokens_received_1:+10,}, {(tokens_received_2 - tokens_received_1)*100/tokens_received_1:+4.0f}%)")
-    print(f"# COST ($)         : {cost_2:10,.2f} ({cost_2 - cost_1:+10,.2f}, {(cost_2 - cost_1)*100/cost_1:+4.0f}%)")
-    print(f"# TIMEOUTS         : {timeouts_2:10d} { f"({timeouts_2 - timeouts_1:+10d}, {(timeouts_2 - timeouts_1)*100/timeouts_1:+4.0f}%)" if timeouts_1 else 'N/A'}")
-    print(f"# ERROR OUTPUTS    : {error_outputs_2:10d} { f"({error_outputs_2 - error_outputs_1:+10d}, {(error_outputs_2 - error_outputs_1)*100/error_outputs_1:+4.0f}%)" if error_outputs_1 else 'N/A'}")
-    print(f"# USER ASKS        : {user_asks_2:10d} { f"({user_asks_2 - user_asks_1:+10d}, {(user_asks_2 - user_asks_1)*100/user_asks_1:+4.0f}%)" if user_asks_1 else 'N/A'}")
-
-    print(f"# CONTEXT EXHAUSTS : {context_exhausts_2:10d} { f"({context_exhausts_2 - context_exhausts_1:+10d}, {(context_exhausts_2 - context_exhausts_1)*100/context_exhausts_1:+4.0f}%)" if context_exhausts_1 else 'N/A'}")
-    print(f"# MALFORMED        : {malformed_2:10d} { f"({malformed_2 - malformed_1:+10d}, {(malformed_2 - malformed_1)*100/malformed_1:+4.0f}%)" if malformed_1 else 'N/A'}")
-    print(f"# SYNTAX ERRORS    : {syntax_errors_2:10d} { f"({syntax_errors_2 - syntax_errors_1:+10d}, {(syntax_errors_2 - syntax_errors_1)*100/syntax_errors_1:+4.0f}%)" if syntax_errors_1 else 'N/A'}")
-    print(f"# INDENT ERRORS    : {indent_errors_2:10d} { f"({indent_errors_2 - indent_errors_1:+10d}, {(indent_errors_2 - indent_errors_1)*100/indent_errors_1:+4.0f}%)" if indent_errors_1 else 'N/A'}")
-    print(f"# LAZY COMMENTS    : {lazy_comments_2:10d} { f"({lazy_comments_2 - lazy_comments_1:+10d}, {(lazy_comments_2 - lazy_comments_1)*100/lazy_comments_1:+4.0f}%)" if lazy_comments_1 else 'N/A'}")
+    print(f"# DURATION         :    {str(timedelta(seconds=int(duration_2)))} ({'-' if duration_2 < duration_1 else '+'}{str(timedelta(seconds=int(abs(duration_2 - duration_1))))}, {(duration_2 - duration_1)*100/duration_1:+4.0f}%){_get_visual_indicator((duration_2 - duration_1)*100/duration_1)}")
+    print(f"# TOKENS SENT      : {tokens_sent_2:10,} ({tokens_sent_2 - tokens_sent_1:+10,}, {(tokens_sent_2 - tokens_sent_1)*100/tokens_sent_1:+4.0f}%){_get_visual_indicator((tokens_sent_2 - tokens_sent_1)*100/tokens_sent_1)}")
+    print(f"# TOKENS RECEIVED  : {tokens_received_2:10,} ({tokens_received_2 - tokens_received_1:+10,}, {(tokens_received_2 - tokens_received_1)*100/tokens_received_1:+4.0f}%){_get_visual_indicator((tokens_received_2 - tokens_received_1)*100/tokens_received_1)}")
+    print(f"# COST ($)         : {cost_2:10,.2f} ({cost_2 - cost_1:+10,.2f}, {(cost_2 - cost_1)*100/cost_1:+4.0f}%){_get_visual_indicator((cost_2 - cost_1)*100/cost_1)}")
+    print(f"# TIMEOUTS         : {timeouts_2:10d} { f"({timeouts_2 - timeouts_1:+10d}, {(timeouts_2 - timeouts_1)*100/timeouts_1:+4.0f}%){_get_visual_indicator((timeouts_2 - timeouts_1)*100/timeouts_1 if timeouts_1 else None)}" if timeouts_1 else 'N/A'}")
+    print(f"# ERROR OUTPUTS    : {error_outputs_2:10d} { f"({error_outputs_2 - error_outputs_1:+10d}, {(error_outputs_2 - error_outputs_1)*100/error_outputs_1:+4.0f}%){_get_visual_indicator((error_outputs_2 - error_outputs_1)*100/error_outputs_1 if error_outputs_1 else None)}" if error_outputs_1 else 'N/A'}")
+    print(f"# USER ASKS        : {user_asks_2:10d} { f"({user_asks_2 - user_asks_1:+10d}, {(user_asks_2 - user_asks_1)*100/user_asks_1:+4.0f}%){_get_visual_indicator((user_asks_2 - user_asks_1)*100/user_asks_1 if user_asks_1 else None)}" if user_asks_1 else 'N/A'}")
+    print(f"# CONTEXT EXHAUSTS : {context_exhausts_2:10d} { f"({context_exhausts_2 - context_exhausts_1:+10d}, {(context_exhausts_2 - context_exhausts_1)*100/context_exhausts_1:+4.0f}%){_get_visual_indicator((context_exhausts_2 - context_exhausts_1)*100/context_exhausts_1 if context_exhausts_1 else None)}" if context_exhausts_1 else 'N/A'}")
+    print(f"# MALFORMED        : {malformed_2:10d} { f"({malformed_2 - malformed_1:+10d}, {(malformed_2 - malformed_1)*100/malformed_1:+4.0f}%){_get_visual_indicator((malformed_2 - malformed_1)*100/malformed_1 if malformed_1 else None)}" if malformed_1 else 'N/A'}")
+    print(f"# SYNTAX ERRORS    : {syntax_errors_2:10d} { f"({syntax_errors_2 - syntax_errors_1:+10d}, {(syntax_errors_2 - syntax_errors_1)*100/syntax_errors_1:+4.0f}%){_get_visual_indicator((syntax_errors_2 - syntax_errors_1)*100/syntax_errors_1 if syntax_errors_1 else None)}" if syntax_errors_1 else 'N/A'}")
+    print(f"# INDENT ERRORS    : {indent_errors_2:10d} { f"({indent_errors_2 - indent_errors_1:+10d}, {(indent_errors_2 - indent_errors_1)*100/indent_errors_1:+4.0f}%){_get_visual_indicator((indent_errors_2 - indent_errors_1)*100/indent_errors_1 if indent_errors_1 else None)}" if indent_errors_1 else 'N/A'}")
+    print(f"# LAZY COMMENTS    : {lazy_comments_2:10d} { f"({lazy_comments_2 - lazy_comments_1:+10d}, {(lazy_comments_2 - lazy_comments_1)*100/lazy_comments_1:+4.0f}%){_get_visual_indicator((lazy_comments_2 - lazy_comments_1)*100/lazy_comments_1 if lazy_comments_1 else None)}" if lazy_comments_1 else 'N/A'}")
 @total_ordering
 class AiderTestResult(NamedTuple):
     failed_attempt_count: int
