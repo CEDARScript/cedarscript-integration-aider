@@ -257,38 +257,40 @@ def main(benchmark_dir_1: str, benchmark_dir_2: str):
     print()
     print("# =============          TOTALS          =============")
     if test_names_only_1:
-        print(f"# REMOVED : {len(test_names_only_1)}")
-        print(f"#    PASSED: {len(test_names_only_1_passed)}")
-        print(f"#    FAILED: {len(test_names_only_1_failed)}")
-    if test_names_only_2:
-        print(f"# NEW     : {len(test_names_only_2)}")
-        print(f"#    PASSED: {len(test_names_only_2_passed)}")
-        print(f"#    FAILED: {len(test_names_only_2_failed)}")
-    if test_names_improved:
-        print(f"# IMPROVED: {len(test_names_improved)}")
-        print(f"#    Now PASSES: {len(test_names_improved_now_passes)}")
-        print(f"#    Minor     : {len(test_names_improved_minor)}")
-    if test_names_worsened:
-        print(f"# WORSENED: {len(test_names_worsened)}")
-        print(f"#    Now FAILED: {len(test_names_worsened_now_fails)}")
-        print(f"#    Minor     : {len(test_names_worsened_minor)}")
-    if test_names_stable:
-        print(f"# STABLE  : {len(test_names_stable)}")
-        print(f"#    PASSED: {len(test_names_stable_passed)}")
-        print(f"#    FAILED: {len(test_names_stable_failed)}")
-    test_count_delta = len(benchmark_run_2) - len(benchmark_run_1)
-    # Calculate totals for each run
-    tokens_sent_1 = sum(t.sent_tokens for t in benchmark_run_1.values())
-    tokens_received_1 = sum(t.received_tokens for t in benchmark_run_1.values())
-    duration_1 = sum(t.duration for t in benchmark_run_1.values())
-    tokens_sent_2 = sum(t.sent_tokens for t in benchmark_run_2.values())
-    tokens_received_2 = sum(t.received_tokens for t in benchmark_run_2.values())
-    duration_2 = sum(t.duration for t in benchmark_run_2.values())
-    
-    print(f"# TOTAL  : {len(benchmark_run_1)}{f' ({test_count_delta:+})' if test_count_delta != 0 else ''}")
-    print(f"# TOKENS SENT     : {tokens_sent_1:,} ({tokens_sent_2 - tokens_sent_1:+,})")
-    print(f"# TOKENS RECEIVED : {tokens_received_1:,} ({tokens_received_2 - tokens_received_1:+,})")
-    print(f"# DURATION (s)    : {duration_1:.1f} ({duration_2 - duration_1:+.1f})")
+        total_tests = len(benchmark_run_1)
+        if test_names_only_1:
+            print(f"# REMOVED : {len(test_names_only_1)} ({len(test_names_only_1)*100/total_tests:.1f}% of total)")
+            print(f"#    PASSED: {len(test_names_only_1_passed)} ({len(test_names_only_1_passed)*100/total_tests:.1f}% of total)")
+            print(f"#    FAILED: {len(test_names_only_1_failed)} ({len(test_names_only_1_failed)*100/total_tests:.1f}% of total)")
+        if test_names_only_2:
+            print(f"# NEW     : {len(test_names_only_2)} ({len(test_names_only_2)*100/total_tests:.1f}% of total)")
+            print(f"#    PASSED: {len(test_names_only_2_passed)} ({len(test_names_only_2_passed)*100/total_tests:.1f}% of total)")
+            print(f"#    FAILED: {len(test_names_only_2_failed)} ({len(test_names_only_2_failed)*100/total_tests:.1f}% of total)")
+        if test_names_improved:
+            print(f"# IMPROVED: {len(test_names_improved)} ({len(test_names_improved)*100/total_tests:.1f}% of total)")
+            print(f"#    Now PASSES: {len(test_names_improved_now_passes)} ({len(test_names_improved_now_passes)*100/total_tests:.1f}% of total)")
+            print(f"#    Minor     : {len(test_names_improved_minor)} ({len(test_names_improved_minor)*100/total_tests:.1f}% of total)")
+        if test_names_worsened:
+            print(f"# WORSENED: {len(test_names_worsened)} ({len(test_names_worsened)*100/total_tests:.1f}% of total)")
+            print(f"#    Now FAILED: {len(test_names_worsened_now_fails)} ({len(test_names_worsened_now_fails)*100/total_tests:.1f}% of total)")
+            print(f"#    Minor     : {len(test_names_worsened_minor)} ({len(test_names_worsened_minor)*100/total_tests:.1f}% of total)")
+        if test_names_stable:
+            print(f"# STABLE  : {len(test_names_stable)} ({len(test_names_stable)*100/total_tests:.1f}% of total)")
+            print(f"#    PASSED: {len(test_names_stable_passed)} ({len(test_names_stable_passed)*100/total_tests:.1f}% of total)")
+            print(f"#    FAILED: {len(test_names_stable_failed)} ({len(test_names_stable_failed)*100/total_tests:.1f}% of total)")
+        test_count_delta = len(benchmark_run_2) - len(benchmark_run_1)
+        # Calculate totals for each run
+        tokens_sent_1 = sum(t.sent_tokens for t in benchmark_run_1.values())
+        tokens_received_1 = sum(t.received_tokens for t in benchmark_run_1.values())
+        duration_1 = sum(t.duration for t in benchmark_run_1.values())
+        tokens_sent_2 = sum(t.sent_tokens for t in benchmark_run_2.values())
+        tokens_received_2 = sum(t.received_tokens for t in benchmark_run_2.values())
+        duration_2 = sum(t.duration for t in benchmark_run_2.values())
+        
+        print(f"# TOTAL   : {total_tests}{f' ({test_count_delta:+})' if test_count_delta != 0 else ''}")
+        print(f"# TOKENS SENT     : {tokens_sent_1:,} ({tokens_sent_2 - tokens_sent_1:+,}, {(tokens_sent_2 - tokens_sent_1)*100/tokens_sent_1:+.1f}%)")
+        print(f"# TOKENS RECEIVED : {tokens_received_1:,} ({tokens_received_2 - tokens_received_1:+,}, {(tokens_received_2 - tokens_received_1)*100/tokens_received_1:+.1f}%)")
+        print(f"# DURATION (s)    : {duration_1:.1f} ({duration_2 - duration_1:+.1f}, {(duration_2 - duration_1)*100/duration_1:+.1f}%)")
 
 
 def benchmark_ls(benchmark_run_dir):
