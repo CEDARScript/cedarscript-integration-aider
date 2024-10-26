@@ -58,7 +58,7 @@ benchmark_ls() {
     local benchmark_run_dir="$1"
 
     echo "# -dirname $(basename "$benchmark_run_dir") tests"
-    echo 'failed-attempts (negative if all attempts failed), test-name, tokens_sent, tokens_received, cost, duration, test_timeouts, num_error_outputs, num_user_asks, num_exhausted_context_windows, num_malformed_responses, syntax_errors, indentation_errors, lazy_comments'
+    echo 'failed-attempts (negative if all attempts failed), test-name, duration, tokens_sent, tokens_received, cost, test_timeouts, num_error_outputs, num_user_asks, num_exhausted_context_windows, num_malformed_responses, syntax_errors, indentation_errors, lazy_comments'
     i=0 total_duration=0 total_failed_attempts=0 failed_test_count=0 total_tokens_sent=0 total_tokens_received=0
     while IFS= read -r -d '' aider_json_file; do
         (( i+=1 ))
@@ -91,8 +91,8 @@ benchmark_ls() {
         total_indentation_errors+=test_indentation_errors,
         total_lazy_comments+=test_lazy_comments
         ))
-        printf '%2d, %s, %d, %d, %0.3f, %0.3f, %d, %d, %d, %d, %d, %d, %d, %d\n' "$attempts" "$dir_name" $tokens_sent $tokens_received \
-          $test_cost $test_duration $test_timeouts $test_num_error_outputs $test_num_user_asks $test_num_exhausted_context_windows \
+        printf '%2d, %-25s, %7.3f, %6d, %07d, %0.3f, %2d, %2d, %2d, %2d, %2d, %2d, %2d, %2d\n' "$attempts" "$dir_name" $test_duration $tokens_sent $tokens_received \
+          $test_cost $test_timeouts $test_num_error_outputs $test_num_user_asks $test_num_exhausted_context_windows \
           $test_num_malformed_responses $test_syntax_errors $test_indentation_errors $test_lazy_comments
     done < <(find "$benchmark_run_dir" -name '.aider.results.json' -print0 | sort -z)
 
@@ -103,6 +103,5 @@ benchmark_ls() {
     printf '# %03.3f, %03d, %03d, %03d, %07d, %07d, %0.3f, %02d, %02d, %02d, %02d, %02d, %02d, %02d, %02d\n' $total_duration $((i-failed_test_count)) $failed_test_count $total_failed_attempts $total_tokens_sent $total_tokens_received \
       $total_cost $total_test_timeouts $total_num_error_outputs $total_num_user_asks $total_num_exhausted_context_windows $total_num_malformed_responses $total_syntax_errors $total_indentation_errors $total_lazy_comments
 }
-alias benchmark.ls=benchmark_ls "$@"
-test "$#" -eq 0 || \
-  benchmark_ls "$@"
+
+benchmark_ls "$@"

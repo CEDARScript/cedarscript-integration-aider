@@ -282,6 +282,18 @@ def main(benchmark_dir_1: str, benchmark_dir_2: str):
     else:
         # In case the number of test cases differ between the 2 benchmark runs
         print(f"# TOTAL  : {len(benchmark_run_1)} ({test_count_delta:+})")
+        # Calculate totals for each run
+        tokens_sent_1 = sum(t.sent_tokens for t in benchmark_run_1.values())
+        tokens_received_1 = sum(t.received_tokens for t in benchmark_run_1.values())
+        duration_1 = sum(t.duration for t in benchmark_run_1.values())
+        tokens_sent_2 = sum(t.sent_tokens for t in benchmark_run_2.values())
+        tokens_received_2 = sum(t.received_tokens for t in benchmark_run_2.values())
+        duration_2 = sum(t.duration for t in benchmark_run_2.values())
+        
+        # Print token totals and deltas
+        print(f"# TOKENS SENT     : {tokens_sent_1:,} ({tokens_sent_2 - tokens_sent_1:+,})")
+        print(f"# TOKENS RECEIVED : {tokens_received_1:,} ({tokens_received_2 - tokens_received_1:+,})")
+        print(f"# DURATION (s)    : {duration_1:.1f} ({duration_2 - duration_1:+.1f})")
 
 
 def benchmark_ls(benchmark_run_dir):
