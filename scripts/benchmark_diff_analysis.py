@@ -8,6 +8,7 @@ import subprocess
 from functools import total_ordering
 from typing import NamedTuple, Union
 
+from datetime import timedelta
 import humanize
 @total_ordering
 class AiderTestResult(NamedTuple):
@@ -287,7 +288,7 @@ def main(benchmark_dir_1: str, benchmark_dir_2: str):
     tokens_received_2 = sum(t.received_tokens for t in benchmark_run_2.values())
     duration_2 = sum(t.duration for t in benchmark_run_2.values())
 
-    print(f"# DURATION        : {humanize.precisedelta(duration_2)} ({humanize.precisedelta(duration_2 - duration_1, minimum_unit='seconds')}, {(duration_2 - duration_1)*100/duration_1:+.1f}%)")
+    print(f"# DURATION        : {str(timedelta(seconds=int(duration_2)))} ({str(timedelta(seconds=int(duration_2 - duration_1)))}, {(duration_2 - duration_1)*100/duration_1:+.1f}%)")
     print(f"# TOTAL TEST COUNT: {len(benchmark_run_2)}{f' ({test_count_delta:+})' if test_count_delta else ''}")
     print(f"# TOKENS SENT     : {tokens_sent_2:,} ({tokens_sent_2 - tokens_sent_1:+,}, {(tokens_sent_2 - tokens_sent_1)*100/tokens_sent_1:+.1f}%)")
     print(f"# TOKENS RECEIVED : {tokens_received_2:7,} ({tokens_received_2 - tokens_received_1:+6,}, {(tokens_received_2 - tokens_received_1)*100/tokens_received_1:+.1f}%)")
