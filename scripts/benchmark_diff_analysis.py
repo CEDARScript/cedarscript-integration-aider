@@ -287,10 +287,27 @@ def main(benchmark_dir_1: str, benchmark_dir_2: str):
         tokens_received_2 = sum(t.received_tokens for t in benchmark_run_2.values())
         duration_2 = sum(t.duration for t in benchmark_run_2.values())
         
-        print(f"# TOTAL   : {total_tests}{f' ({test_count_delta:+})' if test_count_delta != 0 else ''}")
+        print(f"# TOTAL TEST COUNT: {total_tests}{f' ({test_count_delta:+})' if test_count_delta else ''}")
         print(f"# TOKENS SENT     : {tokens_sent_1:,} ({tokens_sent_2 - tokens_sent_1:+,}, {(tokens_sent_2 - tokens_sent_1)*100/tokens_sent_1:+.1f}%)")
-        print(f"# TOKENS RECEIVED : {tokens_received_1:,} ({tokens_received_2 - tokens_received_1:+,}, {(tokens_received_2 - tokens_received_1)*100/tokens_received_1:+.1f}%)")
-        print(f"# DURATION (s)    : {duration_1:.1f} ({duration_2 - duration_1:+.1f}, {(duration_2 - duration_1)*100/duration_1:+.1f}%)")
+        print(f"# TOKENS RECEIVED : {tokens_received_1:7,} ({tokens_received_2 - tokens_received_1:+6,}, {(tokens_received_2 - tokens_received_1)*100/tokens_received_1:+.1f}%)")
+        print(f"# DURATION (s)    : {round(duration_1):3,} ({duration_2 - duration_1:+.1f}, {(duration_2 - duration_1)*100/duration_1:+.1f}%)")
+
+# REMOVED : 101 (75.9% of total)
+#    PASSED: 55 (41.4% of total)
+#    FAILED: 46 (34.6% of total)
+# IMPROVED: 2 (1.5% of total)
+#    Now PASSES: 1 (0.8% of total)
+#    Minor     : 1 (0.8% of total)
+# WORSENED: 6 (4.5% of total)
+#    Now FAILED: 5 (3.8% of total)
+#    Minor     : 1 (0.8% of total)
+# STABLE  : 24 (18.0% of total)
+#    PASSED: 9 (6.8% of total)
+#    FAILED: 15 (11.3% of total)
+# TOTAL   : 133 (-101)
+# TOKENS SENT     : 780,842 (+2,448,158, +313.5%)
+# TOKENS RECEIVED : 194,822 (-42,799, -22.0%)
+# DURATION (s)    : 1188.9 (-319.1, -26.8%)
 
 
 def benchmark_ls(benchmark_run_dir):
