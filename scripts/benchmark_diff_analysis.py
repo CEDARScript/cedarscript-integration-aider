@@ -111,7 +111,7 @@ def main(benchmark_dir_1: str, benchmark_dir_2: str):
             print(f"=-{test_name}: {benchmark_run_1.get(test_name).failed_attempt_count}{f" -> {failed_attempts_2}" if failed_attempts_2 is None or failed_attempts_2 < 0 else ''}")
 
     print()
-    print("# =============          TOTALS          =============")
+    print("# ============= TEST STATUS CHANGES ============")
     total_tests = len(benchmark_run_1)
     if test_names_only_1:
         print()
@@ -148,14 +148,10 @@ def main(benchmark_dir_1: str, benchmark_dir_2: str):
     tokens_received_2 = sum(t.received_tokens for t in benchmark_run_2.values())
     duration_2 = sum(t.duration for t in benchmark_run_2.values())
 
-    # TOTAL TEST COUNT: 89
-    # DURATION        : 1:08:36 (-4:34:07, -80.0%)
-    # TOKENS SENT     : 16,564,000 (+4,568,300, +38.1%)
-    # TOKENS RECEIVED : 328,899 (-4,654,014, -93.4%)
-
     print()
-    print(f"# TOTAL TEST COUNT : {len(benchmark_run_2):3d}{f' ({test_count_delta:+3d})' if test_count_delta else ''}")
-    print(f"# DURATION         :    {str(timedelta(seconds=int(duration_2)))} (  {'-' if duration_2 < duration_1 else '+'}{str(timedelta(seconds=int(abs(duration_2 - duration_1))))}, {(duration_2 - duration_1)*100/duration_1:+2.0f}%)")
+    print("# ============= PERFORMANCE METRICS ============")
+    print(f"# TOTAL TEST COUNT : {len(benchmark_run_2):10d}{f' ({test_count_delta:+3d})' if test_count_delta else ''}")
+    print(f"# DURATION         :    {str(timedelta(seconds=int(duration_2)))} ({'-' if duration_2 < duration_1 else '+'}  {str(timedelta(seconds=int(abs(duration_2 - duration_1))))}, {(duration_2 - duration_1)*100/duration_1:+2.0f}%)")
     print(f"# TOKENS SENT      : {tokens_sent_2:10,} ({tokens_sent_2 - tokens_sent_1:+10,}, {(tokens_sent_2 - tokens_sent_1)*100/tokens_sent_1:+2.0f}%)")
     print(f"# TOKENS RECEIVED  : {tokens_received_2:10,} ({tokens_received_2 - tokens_received_1:+10,}, {(tokens_received_2 - tokens_received_1)*100/tokens_received_1:+2.0f}%)")
 
