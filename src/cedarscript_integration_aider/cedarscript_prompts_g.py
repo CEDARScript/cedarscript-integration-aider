@@ -532,7 +532,7 @@ class B
 </li>
 <li>*NEVER* use an ambiguous line (one that appears 2 or more times) as reference. Instead, prefer a different, nearby line.</li>
 <li>Common mistakes:
-<from-keyword-misuse>
+<from-keyword-ordering>
 # FROM keyword must directly be followed by keyword `FILE` or `PROJECT`, never by `CLASS`, `FUNCTION` or other keywords.
 1) Incorrect: `FROM` followed by `CLASS`, as in `UPDATE FILE "file.py" REPLACE FUNCTION "__init__" FROM CLASS "A"`
    - Correct  : `FROM` keyword followed by `FILE` or `PROJECT`, as in `UPDATE CLASS "A" FROM FILE "file.py" REPLACE FUNCTION "__init__"`
@@ -540,12 +540,22 @@ class B
    - Correct     : `UPDATE FUNCTION "something" FROM FILE "my_file.py" DELETE WHOLE;`
    - Also correct: `UPDATE FILE "my_file.py" DELETE FUNCTION "something";`
    - Also correct: `UPDATE CLASS "MyClass" FROM FILE "my_file.py" DELETE METHOD "something";`
-<from-keyword-misuse>
+<from-keyword-ordering>
 <clause-ordering>
 # `FROM` clause *must* come *before* an *action* clause like `DELETE`, `MOVE`, `INSERT`, `REPLACE`.
 - Incorrect: UPDATE, REPLACE, FROM, as in `UPDATE FILE "file.py" REPLACE FUNCTION "__init__" FROM CLASS "A"`
 - Correct  : UPDATE, FROM, REPLACE, as in `UPDATE CLASS "A" FROM FILE "file.py" REPLACE FUNCTION "__init__"`
 </clause-ordering>
+<action-clause-without-main-clause>
+# Any *action* clause like `DELETE`, `MOVE`, `INSERT` etc *MUST* be preceded by its main clause (`UPDATE`).
+- Incorrect: `UPDATE FILE "file.py" DELETE LINE "print(a)"; DELETE LINE "print(b)";`
+- Correct: `UPDATE FILE "file.py" DELETE LINE "print(a)"; UPDATE FILE "file.py" DELETE LINE "print(b)";`
+</action-clause-without-main-clause>
+<triple-backtick>
+# When using *triple backticks*, you *MUST* pair *every single backtick* with a preeding backslash (total of 3 pairs of backslash-backtick).
+- Incorrect (without a preceding \\ for each backtick): `WITH CONTENT '''Bash: ``` rm *.py ```''';`
+- Correct (ever single backtick is preceded by a "\\"): `WITH CONTENT '''Bash: \\`\\`\\` rm *.py \\`\\`\\`''';`
+</triple-backtick>
 </li>
 </ul>
 
