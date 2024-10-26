@@ -149,7 +149,7 @@ def main(benchmark_dir_1: str, benchmark_dir_2: str):
     duration_2 = sum(t.duration for t in benchmark_run_2.values())
 
     print()
-    print(f"# DURATION        : {str(timedelta(seconds=int(duration_2)))} ({str(timedelta(seconds=int(duration_2 - duration_1)))}, {(duration_2 - duration_1)*100/duration_1:+.1f}%)")
+    print(f"# DURATION        : {str(timedelta(seconds=int(duration_2)))} ({'-' if duration_2 < duration_1 else '+'}{str(timedelta(seconds=int(abs(duration_2 - duration_1))))}, {(duration_2 - duration_1)*100/duration_1:+.1f}%)")
     print(f"# TOTAL TEST COUNT: {len(benchmark_run_2)}{f' ({test_count_delta:+})' if test_count_delta else ''}")
     print(f"# TOKENS SENT     : {tokens_sent_2:,} ({tokens_sent_2 - tokens_sent_1:+,}, {(tokens_sent_2 - tokens_sent_1)*100/tokens_sent_1:+.1f}%)")
     print(f"# TOKENS RECEIVED : {tokens_received_2:7,} ({tokens_received_2 - tokens_received_1:+6,}, {(tokens_received_2 - tokens_received_1)*100/tokens_received_1:+.1f}%)")
