@@ -179,7 +179,7 @@ def main(benchmark_dir_1: str, benchmark_dir_2: str):
     print()
     print("# ============= PERFORMANCE METRICS ============")
     print(f"# TOTAL TEST COUNT : {len(benchmark_run_2):10d}{f' ({test_count_delta:+3d})' if test_count_delta else ''}")
-    print(f"# DURATION         :    {str(timedelta(seconds=int(duration_2)))} ({'-' if duration_2 < duration_1 else '+'}{str(timedelta(seconds=int(abs(duration_2 - duration_1))))}, {(duration_2 - duration_1)*100/duration_1:+4.0f}%){_get_visual_indicator((duration_2 - duration_1)*100/duration_1)}")
+    print(f"# DURATION         :    {str(timedelta(seconds=int(duration_2)))} ({'-' if duration_2 < duration_1 else '+'}  {str(timedelta(seconds=int(abs(duration_2 - duration_1))))}, {(duration_2 - duration_1)*100/duration_1:+4.0f}%){_get_visual_indicator((duration_2 - duration_1)*100/duration_1)}")
     print(f"# TOKENS SENT      : {tokens_sent_2:10,} ({tokens_sent_2 - tokens_sent_1:+10,}, {(tokens_sent_2 - tokens_sent_1)*100/tokens_sent_1:+4.0f}%){_get_visual_indicator((tokens_sent_2 - tokens_sent_1)*100/tokens_sent_1)}")
     print(f"# TOKENS RECEIVED  : {tokens_received_2:10,} ({tokens_received_2 - tokens_received_1:+10,}, {(tokens_received_2 - tokens_received_1)*100/tokens_received_1:+4.0f}%){_get_visual_indicator((tokens_received_2 - tokens_received_1)*100/tokens_received_1)}")
     print(f"# COST ($)         : {cost_2:10,.2f} ({cost_2 - cost_1:+10,.2f}, {(cost_2 - cost_1)*100/cost_1:+4.0f}%){_get_visual_indicator((cost_2 - cost_1)*100/cost_1)}")
