@@ -8,18 +8,19 @@ import subprocess
 from functools import total_ordering
 from typing import NamedTuple, Union
 
-
 @total_ordering
 class AiderTestResult(NamedTuple):
     failed_attempt_count: int
     name: str
-    cost: float
     duration: float
-    test_timeouts: int
-    num_error_outputs: int
-    num_user_asks: int
-    num_exhausted_context_windows: int
-    num_malformed_responses: int
+    sent_tokens: int
+    received_tokens: int
+    cost: float
+    timeouts: int
+    error_output_count: int
+    user_ask_count: int
+    exhausted_context_window_count: int
+    malformed_responses: int
     syntax_errors: int
     indentation_errors: int
     lazy_comments: int
