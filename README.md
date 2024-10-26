@@ -184,17 +184,40 @@ to compete with and even _exceed_ the capabilities of more expensive options in 
 =-split_cat_SplitCatSimplifier_get_transform_params: -4 -> -4
 =-symbolic_shapes_ShapeEnv_bind_symbols: -4 -> -4
 
-# =============          TOTALS          =============
-# IMPROVED: 39
-#    Now PASSES: 36
-#    Minor     : 3
-# WORSENED: 7
-#    Now FAILED: 7
-#    Minor     : 0
-# STABLE  : 43
-#    PASSED: 30
-#    FAILED: 13
-# TOTAL  : 89
+--- 2024-10-22-05-21-41--gemini-1.5-flash-refactoring-whole                                                                                                                    
++++ 2024-10-26-23-32-08--gemini-1.5-pro-refactoring-cedarscript-i0.0.18-e0.3.13                                                                                                
+@@ ============= TEST STATUS CHANGES ============ @@                                                                                                                           
+                                                                                                                                                                               
+< REMOVED      :  71 ( 80% of total)                                                                                                                                           
+<+      PASSED :  35 ( 39% of total)                                                                                                                                           
+<-      FAILED :  36 ( 40% of total)                                                                                                                                           
+                                                                                                                                                                               
++ IMPROVED     :  11 ( 12% of total)                                                                                                                                           
+++  Now PASSES :  10 ( 11% of total)                                                                                                                                           
++        Minor :   1 (  1% of total)                                                                                                                                           
+                                                                                                                                                                               
+- WORSENED     :   3 (  3% of total)                                                                                                                                           
+--  Now FAILED :   3 (  3% of total)                                                                                                                                           
+-        Minor :   0 (  0% of total)                                                                                                                                           
+                                                                                                                                                                               
+= STABLE       :   4 (  4% of total)                                                                                                                                           
+=+      PASSED :   1 (  1% of total)                                                                                                                                           
+#-      FAILED :   3 (  3% of total)                                                                                                                                           
+                                                                                                                                                                               
+@@ ============= PERFORMANCE METRICS ============ @@                                                                                                                           
+# TOTAL TEST COUNT :         18 (-71)                                                                                                                                          
+# DURATION hh:mm:ss:    0:10:29 (-  5:32:14,  -97%) ---------                                                                                                                  
+# COST ($)         :       9.40 (     +7.02, +294%) ++++++++++++++++++++                                                                                                       
+# TOKENS SENT      :  2,683,000 (-9,312,700,  -78%) -------                                                                                                                    
+# TOKENS RECEIVED  :     12,382 (-4,970,531, -100%) ---------                                                                                                                  
+# TIMEOUTS         :          0 N/A                                                                                                                                            
+# ERROR OUTPUTS    :         62 N/A                                                                                                                                            
+# USER ASKS        :         37 (      -521,  -93%) ---------                                                                                                                  
+# CONTEXT EXHAUSTS :          0 N/A                                                                                                                                            
+# MALFORMED        :          4 N/A                                                                                                                                            
+# SYNTAX ERRORS    :          1 (      -105,  -99%) ---------                                                                                                                  
+# INDENT ERRORS    :          9 (       -11,  -55%) -----                                                                                                                      
+# LAZY COMMENTS    :          0 (       -28, -100%) ---------- 
 ```
 </details>
 
