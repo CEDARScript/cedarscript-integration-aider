@@ -173,15 +173,9 @@ def main(benchmark_dir_1: str, benchmark_dir_2: str):
     print(f"# TOKENS SENT      : {tokens_sent_2:10,} ({tokens_sent_2 - tokens_sent_1:+10,}, {(tokens_sent_2 - tokens_sent_1)*100/tokens_sent_1:+2.0f}%)")
     print(f"# TOKENS RECEIVED  : {tokens_received_2:10,} ({tokens_received_2 - tokens_received_1:+10,}, {(tokens_received_2 - tokens_received_1)*100/tokens_received_1:+2.0f}%)")
     print(f"# COST ($)         : {cost_2:10,.2f} ({cost_2 - cost_1:+10,.2f}, {(cost_2 - cost_1)*100/cost_1:+2.0f}%)")
-    print(f"# TIMEOUTS         : {timeouts_2:10d} ({timeouts_2 - timeouts_1:+10d}, {(timeouts_2 - timeouts_1)*100/timeouts_1:+2.0f}% if timeouts_1 else 'N/A'})")
-    print(f"# ERROR OUTPUTS    : {error_outputs_2:10d} ({error_outputs_2 - error_outputs_1:+10d}, {(error_outputs_2 - error_outputs_1)*100/error_outputs_1:+2.0f}% if error_outputs_1 else 'N/A'})")
-    print(f"# USER ASKS        : {user_asks_2:10d} ({user_asks_2 - user_asks_1:+10d}, {(user_asks_2 - user_asks_1)*100/user_asks_1:+2.0f}% if user_asks_1 else 'N/A'})")
-    print(f"# CONTEXT EXHAUSTS : {context_exhausts_2:10d} ({context_exhausts_2 - context_exhausts_1:+10d}, {(context_exhausts_2 - context_exhausts_1)*100/context_exhausts_1:+2.0f}% if context_exhausts_1 else 'N/A'})")
-    print(f"# MALFORMED RESPS  : {malformed_2:10d} ({malformed_2 - malformed_1:+10d}, {(malformed_2 - malformed_1)*100/malformed_1:+2.0f}% if malformed_1 else 'N/A'})")
-    print(f"# SYNTAX ERRORS    : {syntax_errors_2:10d} ({syntax_errors_2 - syntax_errors_1:+10d}, {(syntax_errors_2 - syntax_errors_1)*100/syntax_errors_1:+2.0f}% if syntax_errors_1 else 'N/A'})")
-    print(f"# INDENT ERRORS    : {indent_errors_2:10d} ({indent_errors_2 - indent_errors_1:+10d}, {(indent_errors_2 - indent_errors_1)*100/indent_errors_1:+2.0f}% if indent_errors_1 else 'N/A'})")
-    print(f"# LAZY COMMENTS    : {lazy_comments_2:10d} ({lazy_comments_2 - lazy_comments_1:+10d}, {(lazy_comments_2 - lazy_comments_1)*100/lazy_comments_1:+2.0f}% if lazy_comments_1 else 'N/A'})")
-
+    print(f"# TIMEOUTS         : {timeouts_2:10d} { f"({timeouts_2 - timeouts_1:+10d}, {(timeouts_2 - timeouts_1)*100/timeouts_1:+2.0f}%)" if timeouts_1 else 'N/A'}")
+    print(f"# ERROR OUTPUTS    : {error_outputs_2:10d} { f"({error_outputs_2 - error_outputs_1:+10d}, {(error_outputs_2 - error_outputs_1)*100/error_outputs_1:+2.0f}%)" if error_outputs_1 else 'N/A'}")
+    print(f"# USER ASKS        : {user_asks_2:10d} { f"({user_asks_2 - user_asks_1:+10d}, {(user_asks_2 - user_asks_1)*100/user_asks_1:+2.0f}%)" if user_asks_1 else 'N/A'}")
 
 @total_ordering
 class AiderTestResult(NamedTuple):
