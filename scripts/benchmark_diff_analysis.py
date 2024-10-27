@@ -236,9 +236,6 @@ class AiderTestResult(NamedTuple):
         return self.failed_attempt_count
 
 
-class AttemptOutcomeCounts(NamedTuple):
-    pass_count_by
-
 def _get_max_attempt_count_and_attempt_breakdown(benchmark_run: dict[str, AiderTestResult]) -> tuple[int, Counter]:
     result = Counter([t.failed_attempt_count for t in benchmark_run.values()])
     # TODO the counter has a single negative value. we must return a tuple with absolute value for that value and a modified counter in which the negative value is -1
