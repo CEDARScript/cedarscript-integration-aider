@@ -123,18 +123,20 @@ def main(benchmark_dir_1: str, benchmark_dir_2: str):
     print()
     print(f"--- {benchmark_dir_1.split('/')[-1]}")
     print(f"+++ {benchmark_dir_2.split('/')[-1]}")
+
+    print()
     print("@@ ============= TEST STATUS CHANGES ============ @@")
     total_tests = len(benchmark_run_1)
     if test_names_only_1:
         print()
         print(f"< REMOVED      : {len(test_names_only_1):3d} ({len(test_names_only_1)*100/total_tests:3.0f}% of total)")
-        print(f"<+      PASSED : {len(test_names_only_1_passed):3d} ({len(test_names_only_1_passed)*100/total_tests:3.0f}% of total)")
-        print(f"<-      FAILED : {len(test_names_only_1_failed):3d} ({len(test_names_only_1_failed)*100/total_tests:3.0f}% of total)")
+        print(f"< +     PASSED : {len(test_names_only_1_passed):3d} ({len(test_names_only_1_passed)*100/total_tests:3.0f}% of total)")
+        print(f"< -     FAILED : {len(test_names_only_1_failed):3d} ({len(test_names_only_1_failed)*100/total_tests:3.0f}% of total)")
     if test_names_only_2:
         print()
         print(f"> NEW          : {len(test_names_only_2):3d} ({len(test_names_only_2)*100/total_tests:.1f}% of total)")
-        print(f">+      PASSED : {len(test_names_only_2_passed):3d} ({len(test_names_only_2_passed)*100/total_tests:3.0f}% of total)")
-        print(f">-      FAILED : {len(test_names_only_2_failed):3d} ({len(test_names_only_2_failed)*100/total_tests:3.0f}% of total)")
+        print(f"> +     PASSED : {len(test_names_only_2_passed):3d} ({len(test_names_only_2_passed)*100/total_tests:3.0f}% of total)")
+        print(f"> -     FAILED : {len(test_names_only_2_failed):3d} ({len(test_names_only_2_failed)*100/total_tests:3.0f}% of total)")
     if test_names_improved:
         print()
         print(f"+ IMPROVED     : {len(test_names_improved):3d} ({len(test_names_improved)*100/total_tests:3.0f}% of total)")
@@ -147,8 +149,8 @@ def main(benchmark_dir_1: str, benchmark_dir_2: str):
         print(f"-        Minor : {len(test_names_worsened_minor):3d} ({len(test_names_worsened_minor)*100/total_tests:3.0f}% of total)")
     if test_names_stable:
         print()
-        print(f"= STABLE       : {len(test_names_stable):3d} ({len(test_names_stable)*100/total_tests:3.0f}% of total)")
-        print(f"=+      PASSED : {len(test_names_stable_passed):3d} ({len(test_names_stable_passed)*100/total_tests:3.0f}% of total)")
+        print(f"# STABLE       : {len(test_names_stable):3d} ({len(test_names_stable)*100/total_tests:3.0f}% of total)")
+        print(f"#+      PASSED : {len(test_names_stable_passed):3d} ({len(test_names_stable_passed)*100/total_tests:3.0f}% of total)")
         print(f"#-      FAILED : {len(test_names_stable_failed):3d} ({len(test_names_stable_failed)*100/total_tests:3.0f}% of total)")
 
     test_count_delta = len(benchmark_run_2) - len(benchmark_run_1)
@@ -180,6 +182,7 @@ def main(benchmark_dir_1: str, benchmark_dir_2: str):
 
     print()
     print("@@ ============= PERFORMANCE METRICS ============ @@")
+    print(f"# Max attempt count: #TODO#")
     print(f"# TOTAL TEST COUNT : {len(benchmark_run_2):10d}{f' ({test_count_delta:+3d})' if test_count_delta else ''}")
     print(f"# DURATION hh:mm:ss:    {str(timedelta(seconds=int(duration_2)))} ({'-' if duration_2 < duration_1 else '+'}  {str(timedelta(seconds=int(abs(duration_2 - duration_1))))}, {(duration_2 - duration_1)*100/duration_1:+4.0f}%){_get_visual_indicator((duration_2 - duration_1)*100/duration_1)}")
     print(f"# COST ($)         : {cost_2:10,.2f} ({cost_2 - cost_1:+10,.2f}, {(cost_2 - cost_1)*100/cost_1:+4.0f}%){_get_visual_indicator((cost_2 - cost_1)*100/cost_1)}")
