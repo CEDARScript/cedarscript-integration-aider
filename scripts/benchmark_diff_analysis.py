@@ -157,11 +157,11 @@ def main(benchmark_dir_1: str, benchmark_dir_2: str):
 
     test_count_delta = len(benchmark_run_2) - len(benchmark_run_1)
     # Calculate totals for each run
-    tokens_sent_1 = sum(t.sent_tokens for t in benchmark_run_1.values())
-    tokens_received_1 = sum(t.received_tokens for t in benchmark_run_1.values())
+    sent_tokens_1 = sum(t.sent_tokens for t in benchmark_run_1.values())
+    received_tokens_1 = sum(t.received_tokens for t in benchmark_run_1.values())
     duration_1 = sum(t.duration for t in benchmark_run_1.values())
-    tokens_sent_2 = sum(t.sent_tokens for t in benchmark_run_2.values())
-    tokens_received_2 = sum(t.received_tokens for t in benchmark_run_2.values())
+    sent_tokens_2 = sum(t.sent_tokens for t in benchmark_run_2.values())
+    received_tokens_2 = sum(t.received_tokens for t in benchmark_run_2.values())
     cost_1 = sum(t.cost for t in benchmark_run_1.values())
     cost_2 = sum(t.cost for t in benchmark_run_2.values())
     timeouts_1 = sum(t.timeouts for t in benchmark_run_1.values())
@@ -203,14 +203,21 @@ def main(benchmark_dir_1: str, benchmark_dir_2: str):
         print(f"{prefix}: {count_2:10d} {f'({count_diff:+10d}, {percent_change:+4.0f}%){_get_visual_indicator(percent_change)}' if count_1 else 'N/A'}")
 
     # TODO Print model and edit_format for each run (just take the first value)
+    # Get model and edit format from first test in each run (they should be the same for all tests in a run)
+    model_1 = next(iter(benchmark_run_1.values())).model if benchmark_run_1 else "N/A"
+    model_2 = next(iter(benchmark_run_2.values())).model if benchmark_run_2 else "N/A"
+    edit_format_1 = next(iter(benchmark_run_1.values())).edit_format if benchmark_run_1 else "N/A"
+    edit_format_2 = next(iter(benchmark_run_2.values())).edit_format if benchmark_run_2 else "N/A"
     print()
     print("@@ ============ PERFORMANCE METRICS  =========== @@")
+    print(f"# MODEL            : {model_2.split('/')[-1]:>10} {'(was ' + model_1.split('/')[-1] + ')' if model_1 != model_2 else ''}")
+    print(f"# EDIT FORMAT      : {edit_format_2:>10} {'(was ' + edit_format_1 + ')' if edit_format_1 != edit_format_2 else ''}")
     print(f"# TOTAL TEST COUNT : {len(benchmark_run_2):10d}{f' ({test_count_delta:+3d})' if test_count_delta else ''}")
     print(f"# Max attempt count: {max_failed_attempt_2:10d}{f" ({max_failed_attempt_2 - max_failed_attempt_1:+d})" if max_failed_attempt_2 != max_failed_attempt_1 else ""}")
     print(f"# DURATION hh:mm:ss:    {str(timedelta(seconds=int(duration_2)))} ({'-' if duration_2 < duration_1 else '+'}  {str(timedelta(seconds=int(abs(duration_2 - duration_1))))}, {(duration_2 - duration_1)*100/duration_1:+4.0f}%){_get_visual_indicator((duration_2 - duration_1)*100/duration_1)}")
-    print(f"# COST ($)         : {cost_2:10,.2f} ({cost_2 - cost_1:+10,.2f}, {(cost_2 - cost_1)*100/cost_1:+4.0f}%){_get_visual_indicator((cost_2 - cost_1)*100/cost_1)}")
-    print(f"# TOKENS SENT      : {tokens_sent_2:10,} ({tokens_sent_2 - tokens_sent_1:+10,}, {(tokens_sent_2 - tokens_sent_1)*100/tokens_sent_1:+4.0f}%){_get_visual_indicator((tokens_sent_2 - tokens_sent_1)*100/tokens_sent_1)}")
-    print(f"# TOKENS RECEIVED  : {tokens_received_2:10,} ({tokens_received_2 - tokens_received_1:+10,}, {(tokens_received_2 - tokens_received_1)*100/tokens_received_1:+4.0f}%){_get_visual_indicator((tokens_received_2 - tokens_received_1)*100/tokens_received_1)}")
+    print(f"# COST ($)         : {cost_2:10,.2f} {f'({cost_2 - cost_1:+10,.2f}, {(cost_2 - cost_1)*100/cost_1:+4.0f}%){_get_visual_indicator((cost_2 - cost_1)*100/cost_1)}' if cost_1 else 'N/A'}")
+    print(f"# TOKENS SENT      : {sent_tokens_2:10,} ({sent_tokens_2 - sent_tokens_1:+10,}, {(sent_tokens_2 - sent_tokens_1)*100/sent_tokens_1:+4.0f}%){_get_visual_indicator((sent_tokens_2 - sent_tokens_1)*100/sent_tokens_1)}")
+    print(f"# TOKENS RECEIVED  : {received_tokens_2:10,} ({received_tokens_2 - received_tokens_1:+10,}, {(received_tokens_2 - received_tokens_1)*100/received_tokens_1:+4.0f}%){_get_visual_indicator((received_tokens_2 - received_tokens_1)*100/received_tokens_1)}")
     print_metric_diff("TIMEOUTS         ", timeouts_1, timeouts_2)
     print_metric_diff("ERROR OUTPUTS    ", error_outputs_1, error_outputs_2)
     print_metric_diff("USER ASKS        ", user_asks_1, user_asks_2)
@@ -309,7 +316,7 @@ def create_aider_test_result(csv_string):
                 case 'name' | 'model' | 'edit_format':
                     value = value.strip()
                 case x if x.endswith('count') or x.endswith('s'):
-                    value = int(value)
+                    value = int(value.strip())
                 case _:
                     value = float(value)
         except ValueError:
