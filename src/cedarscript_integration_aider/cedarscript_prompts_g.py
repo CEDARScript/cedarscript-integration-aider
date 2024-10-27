@@ -329,13 +329,31 @@ module.exports = grammar({
 
     /**
 <details topic="Relative Indent Strings">
-<summary>A relative indent prefix is used within strings in CONTENT blocks to simplify matching indentation with the existing code being changed</summary>
-<p>Syntax:</p>
-<ol>
-<li>`@N:` is the relative indent prefix</li>
-<li>`N` is an integer representing the relative indent *level* (can be negative)</li>
-<li>`content` is the actual code or text for that line</li>
-</ol>
+<summary>A *relative* indent prefix is used for each line within strings in CONTENT blocks to simplify matching indentation with the existing code being changed</summary>
+<syntax>
+The patter is @N:line where:
+- `@N:` is the *RELATIVE* indent prefix;
+- `N` is an integer representing the relative indent *level* (can be negative) compared to the *reference point*;
+- `line` is the actual content for that line (comes immediately after prefix)
+</syntax>
+<prefix-examples>
+- `@0:` Same level as reference point                                                                                                                                   
+- `@1:` 1 more indent level than reference point                                                                                                                    
+- `@-1:` 1 less indent level than reference point</li>
+</prefix-examples>
+<reference-point>
+Some reference points:
+- AFTER/BEFORE LINE/FUNCTION/CLASS: The referenced item (rather than one line after or before it)
+- INSERT INSIDE FUNCTION/CLASS TOP/BOTTOM: The function/class body
+- `BODY`: The body of the function/class being modified
+- `WHOLE`: The first line of the block where the function/class etc is defined
+</reference-point>
+<key-points>
+The relative indent level *MUST* change logically with code structure:                                                                                                       
+- Increment N when entering a nested block (if/for/while/try etc...)                                                                                                     
+- Decrement N when exiting a nested block
+NOTE: If you get `E999 IndentationError` message or any other indentation error, check that your relative indent levels follow these rules.
+</key-points>
 <examples>
 <li>'@7:single-quote-string'</li>
 <li>"@-3:double-quote-string"</li>
@@ -349,16 +367,6 @@ module.exports = grammar({
 @-1:line
 \"\"\"</li>
 </examples>
-
-<p>Key points:</p>
-<ol>
-<li>Each line must start with `@N:` where `N` represents the indentation level</li>
-<li>Indentation level *MUST* change logically with code structure:
-   - *MUST* increment N when entering a new block (class body, function body, if statement, loop, etc.)
-   - *MUST* Decrement N when exiting a block
- </li>
-<li>The actual content follows immediately after the prefix (@N:)</li>
-</ol>
 
 <example>
 [...] WITH CONTENT '''
@@ -376,6 +384,7 @@ module.exports = grammar({
 Remember: The relative indentation prefix (@N:) is used to indicate the logical structure
 of the code. The CEDARScript interpreter will handle the actual formatting and indentation
 in the target code file.
+</details>
     */
     content_clause: $ => seq('CONTENT', field('content', $.string)),
 
@@ -473,6 +482,59 @@ in the target code file.
 </grammar.js>
 """
 
+#  TODO
+    #   + When presented with a code change task:
+    #  +
+    #  + 1. Analysis Phase:
+    #  +    a. Carefully read and understand the requested changes
+    #  +    b. Identify which files need to be modified
+    #  +    c. If files aren't in chat yet:
+    #  +       - List ONLY files that need changes (not context files)
+    #  +       - Wait for user to add them
+    #  +       - Don't proceed until files are added
+    #  +
+    #  + 2. Planning Phase:
+    #  +    a. Break down the changes into logical steps
+    #  +    b. For each step, determine:
+    #  +       - Which file(s) to modify
+    #  +       - Which CEDARScript commands to use
+    #  +       - What order to apply changes
+    #  +    c. Look for ways to make commands more concise:
+    #  +       - Can multiple changes be combined?
+    #  +       - Is there a shorter way to express the change?
+    #  +       - Are all lines in the command necessary?
+    #  +
+    #  + 3. Implementation Phase:
+    #  +    Write the CEDARScript commands:
+    #  +    a. Start with a brief explanation of the changes
+    #  +    b. Write the commands in order of application
+    #  +    c. Use comments to explain complex changes
+    #  +    d. Format properly:
+    #  +       ```CEDARScript
+    #  +       -- Step 1: Brief description
+    #  +       UPDATE ...;
+    #  +
+    #  +       -- Step 2: Brief description
+    #  +       UPDATE ...;
+    #  +       ```
+    #  +
+    #  + 4. Error Recovery Phase:
+    #  +    If a command fails:
+    #  +    a. Analyze error details in <error-details> tag
+    #  +    b. Identify the specific issue
+    #  +    c. Consider alternatives:
+    #  +       - Different command structure?
+    #  +       - Different reference points?
+    #  +       - Different approach entirely?
+    #  +    d. Apply fix and retry
+    #  +
+    #  + Remember:
+    #  + - Commands are applied in order
+    #  + - Each command sees results of previous commands
+    #  + - Don't retry successful commands
+    #  + - Keep commands as concise as possible
+    #  + </li>
+
     # Appears twice (as SYSTEM and as USER):
     system_reminder = """When presented with a code change task:
 <action>
@@ -497,15 +559,11 @@ Super careful to avoid syntax errors.</step>
 </IMPORTANT>
 </li>
 <li>Prefer using multiline_string (enclosed in ''') even for single line content</li>
-<li>For `CONTENT` blocks, ALWAYS use `relative indent prefix` (which is the @N: part) for each line. Understand that the actual indentation characters (spaces or tabs) will be applied by the CEDARScript engine,
-adjusting your relative indentation to match the target code's style and position.
+<li>For `CONTENT` blocks, ALWAYS use `relative indent prefix` (which is the @N: part) for each line, where N is RELATIVE to the reference point specified in the command.
+The actual indentation characters (spaces or tabs) will be applied by the CEDARScript engine.
 <CRUCIAL>
-Each line must start with `@N:` where `N` represents the indentation level.
-Indentation level *MUST* change logically with code structure:
-   - *MUST* increment N when entering a new block (class body, function body, if statement, loop, etc.)
-   - *MUST* Decrement N when exiting a block
-If you get `E999 IndentationError` message or any other indentation error, it means you forgot these rules.
-Examples of correctd usage of `@N:` below:
+If you get `E999 IndentationError` message or any other indentation error, check that your relative indent levels follow these rules.
+Examples of correct usage of `@N:` below:
 <example>
 <raw>
 class A:
@@ -528,9 +586,20 @@ class B
 @0:class B
 '''</relative-indent-block>
 </example>
- </CRUCIAL>
+</CRUCIAL>
 </li>
-<li>*NEVER* use an ambiguous line (one that appears 2 or more times) as reference. Instead, prefer a different, nearby line.</li>
+<li>Selecting Reference Points for Code Locations:
+When choosing lines/elements to reference in commands:
+1. Uniqueness Rule: *NEVER* reference an ambiguous line/element (that is, it appears multiple times);
+Check if your chosen reference appears elsewhere in the file;
+If it does, find a unique alternative nearby.
+2. Finding Alternative References: Look for unique comments, function signatures, or class definitions near your target;
+Use structural elements like class/function declarations which tend to be unique.
+3.  Strategies for Common Cases:
+- Function/method bodies: Reference the unique function signature
+- Class methods: Reference the unique method signature
+- Inside loops/conditions: Reference the unique loop/condition line
+- Generic statements: Find unique nearby comments or structural elements
 <li>Common mistakes:
 <from-keyword-ordering>
 # FROM keyword must directly be followed by keyword `FILE` or `PROJECT`, never by `CLASS`, `FUNCTION` or other keywords.
