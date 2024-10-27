@@ -174,7 +174,7 @@ DELETE FUNCTION "factorial";
 
 -- Import the math package:
 UPDATE FILE "path/to/file.py"
-INSERT BEFORE LINE "from flask import Flask"
+INSERT BEFORE LINE '''from flask import Flask'''
 WITH CONTENT '''
 @0:import math
 ''';
@@ -214,7 +214,7 @@ DELETE FUNCTION "hello";
 
 --  Import `hello()`.
 UPDATE FILE "path/to/main.py"
-INSERT AFTER LINE "from flask import Flask"
+INSERT AFTER LINE '''from flask import Flask'''
 WITH CONTENT '''
 @0:from hello import hello
 ''';
@@ -263,7 +263,7 @@ Here's the CEDARScript script:
 {fence[0]}CEDARScript
 -- Import the logging module:
 UPDATE FILE "/dev/stdin" -- Using this file because the code was provided in the message itself
-INSERT BEFORE LINE "import os"
+INSERT BEFORE LINE '''import os'''
 WITH CONTENT '''
 @0:import logging
 ''';
@@ -271,14 +271,10 @@ WITH CONTENT '''
 -- Add a logging statement to print the value of 'now':
 UPDATE FUNCTION "warm_cache_worker"
 FROM FILE "/dev/stdin"
-REPLACE SEGMENT
-  STARTING AT LINE "continue"
-  ENDING AT LINE "now = time.time()" -- notice the line marker starts with "now =" (there's never whitespace at the left side of a marker)
+INSERT AFTER LINE '''now = time.time()'''
 WITH CONTENT '''
-@0:continue
-@-1:now = time.time()
-@-1:logging.debug(f"Cache warming attempt at {{}}; Will validate its value in the next line...", now)
-@-1:now_changed(now)
+@0:logging.debug(f"Cache warming attempt at {{}}; Will validate its value in the next line...", now)
+@0:now_changed(now)
 ''';
 {fence[1]}
 """,
