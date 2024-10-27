@@ -197,8 +197,8 @@ def main(benchmark_dir_1: str, benchmark_dir_2: str):
     print(f"# USER ASKS        : {user_asks_2:10d} { f"({user_asks_2 - user_asks_1:+10d}, {(user_asks_2 - user_asks_1)*100/user_asks_1:+4.0f}%){_get_visual_indicator((user_asks_2 - user_asks_1)*100/user_asks_1 if user_asks_1 else None)}" if user_asks_1 else 'N/A'}")
     print(f"# CONTEXT EXHAUSTS : {context_exhausts_2:10d} { f"({context_exhausts_2 - context_exhausts_1:+10d}, {(context_exhausts_2 - context_exhausts_1)*100/context_exhausts_1:+4.0f}%){_get_visual_indicator((context_exhausts_2 - context_exhausts_1)*100/context_exhausts_1 if context_exhausts_1 else None)}" if context_exhausts_1 else 'N/A'}")
     print(f"# MALFORMED        : {malformed_2:10d} { f"({malformed_2 - malformed_1:+10d}, {(malformed_2 - malformed_1)*100/malformed_1:+4.0f}%){_get_visual_indicator((malformed_2 - malformed_1)*100/malformed_1 if malformed_1 else None)}" if malformed_1 else 'N/A'}")
-    print(f"# SYNTAX ERRORS    : {syntax_errors_2:10d} { f"({syntax_errors_2 - syntax_errors_1:+10d}, {(syntax_errors_2 - syntax_errors_1)*100/syntax_errors_1:+4.0f}%){_get_visual_indicator((syntax_errors_2 - syntax_errors_1)*100/syntax_errors_1 if syntax_errors_1 else None)}" if syntax_errors_1 else 'N/A'}")
-    print(f"# INDENT ERRORS    : {indent_errors_2:10d} { f"({indent_errors_2 - indent_errors_1:+10d}, {(indent_errors_2 - indent_errors_1)*100/indent_errors_1:+4.0f}%){_get_visual_indicator((indent_errors_2 - indent_errors_1)*100/indent_errors_1 if indent_errors_1 else None)}" if indent_errors_1 else 'N/A'}")
+    print_metric_diff("SYNTAX ERRORS    ", syntax_errors_1, syntax_errors_2)
+    print_metric_diff("INDENT ERRORS    ", indent_errors_1, indent_errors_2)
     print_metric_diff("LAZY COMMENTS    ", lazy_comments_1, lazy_comments_2)
 
 
