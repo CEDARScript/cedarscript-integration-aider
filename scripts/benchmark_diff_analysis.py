@@ -188,6 +188,16 @@ def main(benchmark_dir_1: str, benchmark_dir_2: str):
     print("@@ ============= PERFORMANCE METRICS ============ @@")
     print(f"# TOTAL TEST COUNT : {len(benchmark_run_2):10d}{f' ({test_count_delta:+3d})' if test_count_delta else ''}")
     print(f"# Max attempt count: {max_failed_attempt_2:10d}{f" ({max_failed_attempt_2 - max_failed_attempt_1:+d})" if max_failed_attempt_2 != max_failed_attempt_1 else ""}")
+    print("# Failed attempts distribution:")
+    all_attempt_counts = sorted(set(attempt_counts_1.keys()) | set(attempt_counts_2.keys()))
+    for attempt_count in all_attempt_counts:
+        count_1 = attempt_counts_1.get(attempt_count, 0)
+        count_2 = attempt_counts_2.get(attempt_count, 0)
+        if count_1 == 0 and count_2 == 0:
+            continue
+        count_diff = count_2 - count_1
+        percent_change = (count_diff * 100 / count_1) if count_1 else None
+        print(f"#   {attempt_count:3d} attempts: {count_2:10d} {f'({count_diff:+d}, {percent_change:+.0f}%){_get_visual_indicator(percent_change)}' if count_1 else 'N/A'}")
     print(f"# DURATION hh:mm:ss:    {str(timedelta(seconds=int(duration_2)))} ({'-' if duration_2 < duration_1 else '+'}  {str(timedelta(seconds=int(abs(duration_2 - duration_1))))}, {(duration_2 - duration_1)*100/duration_1:+4.0f}%){_get_visual_indicator((duration_2 - duration_1)*100/duration_1)}")
     print(f"# COST ($)         : {cost_2:10,.2f} ({cost_2 - cost_1:+10,.2f}, {(cost_2 - cost_1)*100/cost_1:+4.0f}%){_get_visual_indicator((cost_2 - cost_1)*100/cost_1)}")
     print(f"# TOKENS SENT      : {tokens_sent_2:10,} ({tokens_sent_2 - tokens_sent_1:+10,}, {(tokens_sent_2 - tokens_sent_1)*100/tokens_sent_1:+4.0f}%){_get_visual_indicator((tokens_sent_2 - tokens_sent_1)*100/tokens_sent_1)}")
