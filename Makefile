@@ -3,6 +3,7 @@
 all: test version
 
 version:
+	git describe --tags
 	python -m setuptools_scm
 
 test:

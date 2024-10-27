@@ -496,7 +496,7 @@ Super careful to avoid syntax errors.</step>
 2. If there are MULTIPLE identifiers with the same name, you *MUST* choose an appropriate reference that is unambiguous! 
 </IMPORTANT>
 </li>
-<li>Prefer using multiline_string (enclosed in ''') even for single line content (provides better indentation)</li>
+<li>Prefer using multiline_string (enclosed in ''') even for single line content</li>
 <li>For `CONTENT` blocks, ALWAYS use `relative indent prefix` (which is the @N: part) for each line. Understand that the actual indentation characters (spaces or tabs) will be applied by the CEDARScript engine,
 adjusting your relative indentation to match the target code's style and position.
 <CRUCIAL>
@@ -563,12 +563,78 @@ class B
 ONLY EVER RETURN CODE IN *CEDARScript block*!
 CEDARScript commands MUST BE *AS CONCISE AS POSSIBLE*!
 ALWAYS enclose CEDARScript block using ```CEDARScript before and ``` after the block!
-If you want to just *show* some CEDARScript commands to the user instead of executing them, use ``` (instead of ```CEDARScript).
-If you don't want to send a CEDARScript block, you HAVE to end the message with the special tag <NOCEDARSCRIPT/> as the last line.
+You MUST write <NOCEDARSCRIPT/> as the last line if:
+1) You just want *show* some CEDARScript commands to the user instead of executing them;
+2) If there are no CEDARScript blocks to execute.
 {shell_cmd_reminder}
 """
 
     example_messages = CEDARScriptPromptsBase.example_messages + [
+        dict(
+            role="user",
+            content="""
+'''python
+def calculate_sum(a, b):
+    return a + b
+'''
+Add docstring to the function
+            """
+        ),
+        dict(
+            role="assistant",
+            content="""
+{fence[0]}CEDARScript
+UPDATE FILE "/dev/stdin"
+INSERT INSIDE FUNCTION "calculate_sum" TOP
+WITH CONTENT '''
+@0:\"\"\"Calculate sum of two numbers.
+@0:
+@0:Args:
+@1:a: First number
+@1:b: Second number
+@0:
+@0:Returns:
+@1:Sum of a and b
+\"\"\"
+''';
+{fence[1]}
+""",
+        ),
+        dict(
+            role="user",
+            content="""
+'''python
+class A:
+    def calculate_sum(self, a, b):
+        return a + b
+class B:
+    def calculate_sum(self, a, b):
+        return a + b
+'''
+Add docstring to the method in class B
+            """
+        ),
+        dict(
+            role="assistant",
+            content="""
+{fence[0]}CEDARScript
+UPDATE CLASS "B"
+FROM FILE "/dev/stdin"
+INSERT INSIDE METHOD "calculate_sum" TOP
+WITH CONTENT '''
+@0:\"\"\"Calculate sum of two numbers.
+@0:
+@0:Args:
+@1:a: First number
+@1:b: Second number
+@0:
+@0:Returns:
+@1:Sum of a and b
+\"\"\"
+''';
+{fence[1]}
+""",
+        ),
         dict(
             role="user",
             content="""
@@ -612,9 +678,8 @@ Here's the CEDARScript script:
 
 {fence[0]}CEDARScript
 -- 1. Move the `myFirstFunction()` method from the `MyClass` class, placing it at the top level, just before the line where its class starts.
-UPDATE FUNCTION "myFirstFunction"
-  FROM FILE "/dev/stdin"
-MOVE WHOLE
+UPDATE FILE "/dev/stdin"
+MOVE FUNCTION "myFirstFunction"
 INSERT BEFORE CLASS "MyClass"
   RELATIVE INDENTATION 0; -- the function being moved will start at the same indentation as the class `MyClass`
 
@@ -622,16 +687,16 @@ INSERT BEFORE CLASS "MyClass"
 UPDATE FUNCTION "myFirstFunction"
   FROM FILE "/dev/stdin"
 REPLACE SEGMENT
-    STARTING AFTER LINE "def myFirstFunction("
-    ENDING AT LINE "self, name: str,"
+    STARTING AFTER LINE '''def myFirstFunction('''
+    ENDING AT LINE '''self, name: str,'''
 WITH CONTENT '''
 @1:instance_var_1: str, name: str,
 ''';
 UPDATE FUNCTION "myFirstFunction"
 FROM FILE "/dev/stdin"
 REPLACE SEGMENT
-  STARTING AFTER LINE "a = doSomething(name, age)"
-  ENDING AT LINE "return a + 5 + len(self.instance_var_1) * 7"
+  STARTING AFTER LINE '''a = doSomething(name, age)'''
+  ENDING AT LINE '''return a + 5 + len(self.instance_var_1) * 7'''
 -- `@-1:` is used because the return statement is 1 indent level to the *left* of 'a = doSomething(name, age)' (STARTING reference mark)
 WITH CONTENT '''
 @-1:return a + 5 + len(instance_var_1) * 7
@@ -640,21 +705,21 @@ WITH CONTENT '''
 -- 3. Update ALL call sites of the method `myFirstFunction` to call the new top-level function with the same name, passing `instance_var_1` as argument
 UPDATE FILE "/dev/stdin"
 REPLACE SEGMENT
-  STARTING AFTER LINE "def anotherFunction(self, name: str, age: int):"
-  ENDING BEFORE LINE '''c = "x" + '"' + "'" + "z"''' -- multi-line string used to avoid escaping `'` and `"`
+  STARTING AFTER LINE '''def anotherFunction(self, name: str, age: int):'''
+  ENDING BEFORE LINE '''c = "x" + '"' + "'" + "z"''' -- multi-line string helps avoid escaping `'` and `"`
 WITH CONTENT '''
 @1:b = checkVal(45, "strict", myFirstFunction(instance_var_1, name, age), 8, "tops")
 @1:bb = checkVal(7, "lax", myFirstFunction(instance_var_1, name, age), 2, "bottom")
 ''';
 UPDATE FILE "/dev/stdin"
-REPLACE LINE 'd = checkVal(45, "strict", self.myFirstFunction(name, age), 8, "tops")'
+REPLACE LINE '''d = checkVal(45, "strict", self.myFirstFunction(name, age), 8, "tops")'''
 WITH CONTENT '''
 @0:d = checkVal(45, "strict", myFirstFunction(instance_var_1, name, age), 8, "tops")
 ''';
 UPDATE FILE "/dev/stdin"
 REPLACE SEGMENT
   STARTING AT LINE \"\"\"'9"f', "as'df", self.myFirstFunction(name, age))\"\"\" -- multi-line string used to avoid escaping `'` and `"`
-  ENDING BEFORE LINE 'return b * 3'
+  ENDING BEFORE LINE '''return b * 3'''
 WITH CONTENT '''
 @0:'9"f', "as'df", myFirstFunction(instance_var_1, name, age))
 ''';
@@ -702,17 +767,16 @@ Here's the CEDARScript script:
 
 {fence[0]}CEDARScript
 -- 1. Move the `myFirstFunction` method from the `MyClass` class, placing it at the top level, just before the line where its class starts.
-UPDATE FUNCTION "myFirstFunction"
-  FROM FILE "/dev/stdin"
-MOVE WHOLE
+UPDATE FILE "/dev/stdin"
+MOVE FUNCTION "myFirstFunction"
 INSERT BEFORE CLASS "MyClass"
   RELATIVE INDENTATION 0; -- the block of code being moved wil start at the same indentation as the 'reference mark'
 
 -- 2. Update the copied function to remove references to `self`, now declaring `instance_var_1` as parameter
 UPDATE FUNCTION "myFirstFunction"
-FROM FILE "/dev/stdin"
+  FROM FILE "/dev/stdin"
 REPLACE SEGMENT
-  STARTING AT LINE "def myFirstFunction(self, name: str, age: int):"
+  STARTING AT LINE '''def myFirstFunction(self, name: str, age: int):'''
   ENDING BEFORE LINE '\"\"\"Lorem ipsum dolor sit amet' -- Chose the first line below the starting line to get the shortest segment possible
 WITH CONTENT '''
 @0:def myFirstFunction(instance_var_1: str, name: str, age: int):
@@ -720,8 +784,8 @@ WITH CONTENT '''
 UPDATE FUNCTION "myFirstFunction"
   FROM FILE "/dev/stdin"
 REPLACE SEGMENT
-  STARTING AFTER LINE "a = doSomething(name, age)"
-  ENDING AT LINE "return a + 5 + len(self.instance_var_1) * 7"
+  STARTING AFTER LINE '''a = doSomething(name, age)'''
+  ENDING AT LINE '''return a + 5 + len(self.instance_var_1) * 7'''
 WITH CONTENT '''
 @-1:return a + 5 + len(instance_var_1) * 7
 ''';
@@ -730,7 +794,7 @@ WITH CONTENT '''
 UPDATE FILE "/dev/stdin"
 REPLACE SEGMENT
   STARTING AFTER LINE "# Check and store in 'b' and 'bb'"
-  ENDING BEFORE LINE "return b + bb"
+  ENDING BEFORE LINE '''return b + bb'''
 WITH CONTENT '''
 @0:b = checkVal(45, "strict", myFirstFunction(instance_var_1, name, age), 8, "tops")
 @0:bb = checkVal(7, "lax", myFirstFunction(instance_var_1, name, age), 2, "bottom")
@@ -786,7 +850,7 @@ Here's the CEDARScript script:
 -- 1. Add instance variable `greeting_count: int` to the `Greeter` class to keep track of the greeting count
 UPDATE CLASS "Greeter" -- As method `__init__` exists in more than 1 class, we specify which one we want to reference
   FROM FILE "/dev/stdin"
-REPLACE FUNCTION "__init__" -- Replace the entire function, as there's nothing to keep
+REPLACE METHOD "__init__" -- Replace the entire method, as there's nothing to keep
 WITH CONTENT '''
 @0:def __init__(self):
 @1:self.greeting_count: int = 0
@@ -795,7 +859,7 @@ WITH CONTENT '''
 -- 2. Implement the `print_with_prefix()` method to print parameter `name` prefixed with the `prefix` parameter;
 UPDATE CLASS "Greeter" -- As method `print_with_prefix` exists in more than 1 class, we specify which one we want to reference
   FROM FILE "/dev/stdin"
-REPLACE FUNCTION "print_with_prefix" -- no need to preserve it, so we replace it
+REPLACE METHOD "print_with_prefix" -- no need to preserve it, so we replace it
 WITH CONTENT '''
 @0:def print_with_prefix(self, prefix: str, name: str):
 @1:print(f"{{prefix}}{{name}}")
@@ -804,7 +868,7 @@ WITH CONTENT '''
 -- 3. Insert a call to the `print_with_prefix()` method at the top of the last method (`greet`);
 UPDATE CLASS "Greeter" -- As method `greet` exists in more than 1 class, we specify which one we want to reference
   FROM FILE "/dev/stdin"
-INSERT INSIDE FUNCTION "greet" TOP -- at the TOP of the function body
+INSERT INSIDE METHOD "greet" TOP -- at the TOP of the function body
 -- The function body is the reference indent level; `@0:` means to use that same level 
 WITH CONTENT '''
 @0:print_with_prefix('Hi, ', name)
@@ -813,7 +877,7 @@ WITH CONTENT '''
 -- 4. Insert code at the bottom of the `greet()` method to increment the greeting count and print it.
 UPDATE CLASS "Greeter" -- As method `greet` exists in more than 1 class, we specify which one we want to reference
   FROM FILE "/dev/stdin"
-INSERT INSIDE FUNCTION "greet" BOTTOM -- at the BOTTOM of the function body
+INSERT INSIDE METHOD "greet" BOTTOM -- at the BOTTOM of the function body
 -- The function body is the reference indent level; `@0:` means to use that same level 
 WITH CONTENT '''
 @0:self.greeting_count += 1
@@ -883,26 +947,26 @@ Here's the CEDARScript script:
 -- 1. Move the `calc1` method from the `A` class, placing it at the top level, just before the line where its class starts
 UPDATE CLASS "A" -- As method `calc1` exists in more than 1 class, we specify which one we want to reference
   FROM FILE "/dev/stdin"
-MOVE FUNCTION "calc1"
+MOVE METHOD "calc1"
 INSERT BEFORE CLASS "A"
   RELATIVE INDENTATION 0;
 
 -- 2. Update the copied function to remove references to `self`, now declaring `instance_var` as parameter
 UPDATE FUNCTION "calc1" OFFSET 1 -- Now, `calc1` exists as a top-level function before class `A` (we just moved it), but there's also a method with the same name inside class `A0`, so we use `OFFSET 1` to skip the first match (the one from `A0`)
   FROM FILE "/dev/stdin"
-REPLACE LINE "def calc1(self, a):"
+REPLACE LINE '''def calc1(self, a):'''
 WITH CONTENT '''
 @0:def calc1(instance_var: int, a):
 ''';
 UPDATE FUNCTION "calc1" OFFSET 1 -- to skip 1 match (the one from `A0`)
   FROM FILE "/dev/stdin"
-REPLACE LINE "after 'self') by a value stored in 'self.instance_var'."
+REPLACE LINE \"\"\"after 'self') by a value stored in 'self.instance_var'.\"\"\"
 WITH CONTENT '''
 @0:after 'instance_var') by a value stored in 'instance_var'.
 ''';
 UPDATE FUNCTION "calc1" OFFSET 1 -- to skip 1 match (the one from `A0`)
   FROM FILE "/dev/stdin"
-REPLACE LINE 'return a * self.instance_var'
+REPLACE LINE '''return a * self.instance_var'''
 WITH CONTENT '''
 @0:return a * instance_var
 ''';
@@ -961,7 +1025,7 @@ Here's the CEDARScript script:
 -- 1. Move the `calc1` method from the `A` class, placing it at the top level, just before the line where its class starts
 UPDATE CLASS "A" -- As method `calc1` exists in more than 1 class, we specify which one we want to reference
   FROM FILE "/dev/stdin"
-MOVE FUNCTION "calc1"
+MOVE METHOD "calc1"
 INSERT BEFORE CLASS "A"
   RELATIVE INDENTATION 0;
 
@@ -978,16 +1042,16 @@ WITH CONTENT '''
 UPDATE FUNCTION "calc2" OFFSET 1 -- There are 2 `calc2` methods. We skip 1, meaning we target the second one (which is the one in the `A` class)
   FROM FILE "/dev/stdin"
 REPLACE SEGMENT
-  STARTING AFTER LINE '# Call calc1...' -- We cannot use line 'c = ["x", str(self.calc1(' as reference marker because there are 2 or more matches for it
-  ENDING BEFORE LINE '5), "xx"]' -- We cannot use line 'c = ["x", str(self.calc1(' as reference marker because there are 2 or more matches for it
+  STARTING AFTER LINE '''# Call calc1...''' -- We cannot use line 'c = ["x", str(self.calc1(' as reference marker because there are 2 or more matches for it
+  ENDING BEFORE LINE '''5), "xx"]''' -- We cannot use line 'c = ["x", str(self.calc1(' as reference marker because there are 2 or more matches for it
 WITH CONTENT '''
 @0:c = ["x", str(calc1(self.instance_var,
 ''';
 UPDATE FUNCTION "calc2" OFFSET 1
   FROM FILE "/dev/stdin"
 REPLACE SEGMENT
-  STARTING AFTER LINE '5), "xx"]'
-  ENDING BEFORE LINE '6), "xx"]'
+  STARTING AFTER LINE '''5), "xx"]'''
+  ENDING BEFORE LINE '''6), "xx"]'''
 WITH CONTENT '''
 @-1:c = ["x", str(calc1(self.instance_var,
 '''; -- Above, we used relative indent level -1 because the line to be replaced is 1 level to the *LEFT* of '5), "xx"]' (the starting reference line)
@@ -1037,7 +1101,7 @@ WITH CONTENT'''
 
 -- 2. Update the function signature of `calc2()` to add parameter `base_tax: float = 1.3` as the last one
 UPDATE FILE "/dev/stdin"
-REPLACE LINE "def calc2(a):"
+REPLACE LINE '''def calc2(a):'''
 WITH CONTENT'''
 @0:def calc2(a, base_tax: float = 1.3):
 ''';
@@ -1045,16 +1109,16 @@ WITH CONTENT'''
 -- 3. Update ALL call sites of `calc1()` to pass `base_tax` as the first argument
 UPDATE FILE "/dev/stdin"
 REPLACE SEGMENT
-  STARTING AFTER LINE 'def calc2(a, base_tax: float = 1.3):' -- We cannot use line 'c = ["x", str(calc1(' as reference marker because there are 2 or more matches for it
-  ENDING BEFORE LINE '5), "xx"]' -- We cannot use line 'c = ["x", str(calc1(' as reference marker because there are 2 or more matches for it
+  STARTING AFTER LINE '''def calc2(a, base_tax: float = 1.3):''' -- We cannot use line 'c = ["x", str(calc1(' as reference marker because there are 2 or more matches for it
+  ENDING BEFORE LINE '''5), "xx"]''' -- We cannot use line 'c = ["x", str(calc1(' as reference marker because there are 2 or more matches for it
 WITH CONTENT '''
 @1:c = ["x", str(calc1(base_tax,
 '''; -- Above, we used relative indent level 1 because the line to be replaced is 1 level to the *RIGHT* of 'def calc2(a, base_tax: float = 1.3):' (the starting reference line)
 UPDATE FUNCTION "calc2"
   FROM FILE "/dev/stdin"
 REPLACE SEGMENT
-  STARTING AFTER LINE '5), "xx"]'
-  ENDING BEFORE LINE '6), "xx"]'
+  STARTING AFTER LINE '''5), "xx"]'''
+  ENDING BEFORE LINE '''6), "xx"]'''
 WITH CONTENT '''
 @-1:c = ["x", str(calc1(base_tax,
 '''; -- Above, we used relative indent level -1 because the line to be replaced is 1 level to the *LEFT* of '5), "xx"]' (the starting reference line)
@@ -1099,24 +1163,23 @@ Here's the CEDARScript script:
 
 {fence[0]}CEDARScript
 -- 1. Move the `_candidate()` method from the `A` class, placing it at the top level, just before the line where its class starts
-UPDATE FUNCTION "_candidate" -- As method `_candidate` only exists in one place, it's unambiguous, so we ought to directly reference it (by using `UPDATE FUNCTION..MOVE WHOLE`).
-  FROM FILE "/dev/stdin"
-MOVE WHOLE
+UPDATE FILE "/dev/stdin"
+MOVE METHOD "_candidate" -- As method `_candidate` only exists in one place, it's unambiguous, so we ought to directly reference it (by using `UPDATE FUNCTION..MOVE WHOLE`).
 INSERT BEFORE CLASS "A"
   RELATIVE INDENTATION 0;
 
 -- 2. Update the copied function to remove references to `self`
 UPDATE FUNCTION "_candidate"
   FROM FILE "/dev/stdin"
-REPLACE LINE "def _candidate(self, a, b, c):"
+REPLACE LINE '''def _candidate(self, a, b, c):'''
 WITH CONTENT '''
 @0:def _candidate(a, b, c):
 ''';
 
 -- 3. Update ALL call sites of the method `_candidate()` to call the new top-level function with the same name
-UPDATE FUNCTION "_check"
+UPDATE METHOD "_check"
   FROM FILE "/dev/stdin"
-REPLACE LINE 'self._candidate(' -- There's only 1 call site and this line marker is unambiguous, so it's more concise to just replace a LINE instead of a SEGMENT
+REPLACE LINE '''self._candidate(''' -- There's only 1 call site and this line marker is unambiguous, so it's more concise to just replace a LINE instead of a SEGMENT
 WITH CONTENT '''
 @0:_candidate(
 ''';
@@ -1162,22 +1225,22 @@ Here's the CEDARScript script:
 -- 1. Move the `_candidate()` method from the `A` class, placing it at the top level, just before the line where its class starts
 UPDATE CLASS "A" -- As method `_candidate` only exists in one place, it's unambiguous, but this time we wmust try the alternative form `UPDATE CLASS..MOVE FUNCTION` (instead of `UPDATE FUNCTION..MOVE WHOLE`) because the latter failed last time we tried.
   FROM FILE "/dev/stdin"
-MOVE FUNCTION "_candidate"
+MOVE METHOD "_candidate"
 INSERT BEFORE CLASS "A"
   RELATIVE INDENTATION 0;
 
 -- 2. Update the copied function to remove references to `self`
 UPDATE FUNCTION "_candidate"
   FROM FILE "/dev/stdin"
-REPLACE LINE "def _candidate(self, a, b, c):"
+REPLACE LINE '''def _candidate(self, a, b, c):'''
 WITH CONTENT '''
 @0:def _candidate(a, b, c):
 ''';
 
 -- 3. Update ALL call sites of the method `_candidate()` to call the new top-level function with the same name
-UPDATE FUNCTION "_check"
+UPDATE METHOD "_check"
   FROM FILE "/dev/stdin"
-REPLACE LINE 'self._candidate(' -- There's only 1 call site and this line marker is unambiguous, so it's more concise to just replace a LINE instead of a SEGMENT
+REPLACE LINE '''self._candidate(''' -- There's only 1 call site and this line marker is unambiguous, so it's more concise to just replace a LINE instead of a SEGMENT
 WITH CONTENT '''
 @0:_candidate(
 ''';
