@@ -20,6 +20,13 @@ def _get_visual_indicator(percent_change: float | None) -> str:
     abs_change = abs(percent_change)
     indicator_length = min(20, max(1, int(abs_change / 10)))  # 1 char per 10% change, max 20
     return (" " + ("+" if percent_change > 0 else "-") * indicator_length)
+def _get_max_attempt_count(benchmark_run: dict[str, AiderTestResult]) -> int:
+    """Find max attempt count by looking at negative failed_attempt_count values."""
+    max_count = 0
+    for test in benchmark_run.values():
+        if test.failed_attempt_count < 0:
+            max_count = max(max_count, abs(test.failed_attempt_count))
+    return max_count
 def main(benchmark_dir_1: str, benchmark_dir_2: str):
     """
     Main function to compare two benchmark runs and print the analysis.
@@ -182,7 +189,9 @@ def main(benchmark_dir_1: str, benchmark_dir_2: str):
 
     print()
     print("@@ ============= PERFORMANCE METRICS ============ @@")
-    print(f"# Max attempt count: #TODO#")
+    max_count_1 = _get_max_attempt_count(benchmark_run_1)
+    max_count_2 = _get_max_attempt_count(benchmark_run_2)
+    print(f"# Max attempt count : {max_count_2:10d}{f" ({max_count_2 - max_count_1:+d})" if max_count_2 != max_count_1 else ""}")
     print(f"# TOTAL TEST COUNT : {len(benchmark_run_2):10d}{f' ({test_count_delta:+3d})' if test_count_delta else ''}")
     print(f"# DURATION hh:mm:ss:    {str(timedelta(seconds=int(duration_2)))} ({'-' if duration_2 < duration_1 else '+'}  {str(timedelta(seconds=int(abs(duration_2 - duration_1))))}, {(duration_2 - duration_1)*100/duration_1:+4.0f}%){_get_visual_indicator((duration_2 - duration_1)*100/duration_1)}")
     print(f"# COST ($)         : {cost_2:10,.2f} ({cost_2 - cost_1:+10,.2f}, {(cost_2 - cost_1)*100/cost_1:+4.0f}%){_get_visual_indicator((cost_2 - cost_1)*100/cost_1)}")
