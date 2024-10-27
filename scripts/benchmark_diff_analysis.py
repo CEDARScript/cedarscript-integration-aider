@@ -182,8 +182,8 @@ def main(benchmark_dir_1: str, benchmark_dir_2: str):
     lazy_comments_2 = sum(t.lazy_comments for t in benchmark_run_2.values())
     duration_2 = sum(t.duration for t in benchmark_run_2.values())
 
-    max_failed_attempt_1 = _get_max_attempt_count(benchmark_run_1)
-    max_failed_attempt_2 = _get_max_attempt_count(benchmark_run_2)
+    max_failed_attempt_1, _ = _get_attempt_limit_and_normalized_counts(benchmark_run_1)
+    max_failed_attempt_2, _ = _get_attempt_limit_and_normalized_counts(benchmark_run_2)
     print()
     print("@@ ============= PERFORMANCE METRICS ============ @@")
     print(f"# Max attempt count: {max_failed_attempt_2:10d}{f" ({max_failed_attempt_2 - max_failed_attempt_1:+d})" if max_failed_attempt_2 != max_failed_attempt_1 else ""}")
@@ -236,7 +236,7 @@ class AiderTestResult(NamedTuple):
         return self.failed_attempt_count
 
 
-def _get_max_attempt_count_and_attempt_breakdown(benchmark_run: dict[str, AiderTestResult]) -> tuple[int, Counter]:
+def _get_attempt_limit_and_normalized_counts(benchmark_run: dict[str, AiderTestResult]) -> tuple[int, Counter]:
     result = Counter([t.failed_attempt_count for t in benchmark_run.values()])
     # Find the negative value (if any) and its count
     negative_value = next((k for k in result.keys() if k < 0), None)
