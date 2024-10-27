@@ -20,7 +20,7 @@ def _get_visual_indicator(percent_change: float | None) -> str:
     # Convert to absolute value to determine length, but keep sign for direction
     abs_change = abs(percent_change)
     indicator_length = min(20, max(1, int(abs_change / 10)))  # 1 char per 10% change, max 20
-    return (" " + ("+" if percent_change > 0 else "-") * indicator_length)
+    return " " + ("+" if percent_change > 0 else "-") * indicator_length
 
 def main(benchmark_dir_1: str, benchmark_dir_2: str):
     """
@@ -238,7 +238,17 @@ class AiderTestResult(NamedTuple):
 
 def _get_max_attempt_count_and_attempt_breakdown(benchmark_run: dict[str, AiderTestResult]) -> tuple[int, Counter]:
     result = Counter([t.failed_attempt_count for t in benchmark_run.values()])
-    # TODO the counter has a single negative value. we must return a tuple with absolute value for that value and a modified counter in which the negative value is -1
+    # Find the negative value (if any) and its count
+    negative_value = next((k for k in result.keys() if k < 0), None)
+    if negative_value is None:
+        return 0, result
+    # Get the count of tests with this negative value
+    negative_count = result[negative_value]
+    # Remove the original negative value from counter
+    del result[negative_value]
+    # Add the count to -1 in the counter
+    result[-1] = negative_count
+    return abs(negative_value), result
 
 
 def create_aider_test_result(csv_string):
