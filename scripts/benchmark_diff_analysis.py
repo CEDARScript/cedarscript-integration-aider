@@ -182,12 +182,12 @@ def main(benchmark_dir_1: str, benchmark_dir_2: str):
     lazy_comments_2 = sum(t.lazy_comments for t in benchmark_run_2.values())
     duration_2 = sum(t.duration for t in benchmark_run_2.values())
 
-    max_failed_attempt_1, _ = _get_attempt_limit_and_normalized_counts(benchmark_run_1)
-    max_failed_attempt_2, _ = _get_attempt_limit_and_normalized_counts(benchmark_run_2)
+    max_failed_attempt_1, attempt_counts_1 = _get_attempt_limit_and_normalized_counts(benchmark_run_1)
+    max_failed_attempt_2, attempt_counts_2 = _get_attempt_limit_and_normalized_counts(benchmark_run_2)
     print()
     print("@@ ============= PERFORMANCE METRICS ============ @@")
-    print(f"# Max attempt count: {max_failed_attempt_2:10d}{f" ({max_failed_attempt_2 - max_failed_attempt_1:+d})" if max_failed_attempt_2 != max_failed_attempt_1 else ""}")
     print(f"# TOTAL TEST COUNT : {len(benchmark_run_2):10d}{f' ({test_count_delta:+3d})' if test_count_delta else ''}")
+    print(f"# Max attempt count: {max_failed_attempt_2:10d}{f" ({max_failed_attempt_2 - max_failed_attempt_1:+d})" if max_failed_attempt_2 != max_failed_attempt_1 else ""}")
     print(f"# DURATION hh:mm:ss:    {str(timedelta(seconds=int(duration_2)))} ({'-' if duration_2 < duration_1 else '+'}  {str(timedelta(seconds=int(abs(duration_2 - duration_1))))}, {(duration_2 - duration_1)*100/duration_1:+4.0f}%){_get_visual_indicator((duration_2 - duration_1)*100/duration_1)}")
     print(f"# COST ($)         : {cost_2:10,.2f} ({cost_2 - cost_1:+10,.2f}, {(cost_2 - cost_1)*100/cost_1:+4.0f}%){_get_visual_indicator((cost_2 - cost_1)*100/cost_1)}")
     print(f"# TOKENS SENT      : {tokens_sent_2:10,} ({tokens_sent_2 - tokens_sent_1:+10,}, {(tokens_sent_2 - tokens_sent_1)*100/tokens_sent_1:+4.0f}%){_get_visual_indicator((tokens_sent_2 - tokens_sent_1)*100/tokens_sent_1)}")
@@ -199,7 +199,13 @@ def main(benchmark_dir_1: str, benchmark_dir_2: str):
     print(f"# MALFORMED        : {malformed_2:10d} { f"({malformed_2 - malformed_1:+10d}, {(malformed_2 - malformed_1)*100/malformed_1:+4.0f}%){_get_visual_indicator((malformed_2 - malformed_1)*100/malformed_1 if malformed_1 else None)}" if malformed_1 else 'N/A'}")
     print(f"# SYNTAX ERRORS    : {syntax_errors_2:10d} { f"({syntax_errors_2 - syntax_errors_1:+10d}, {(syntax_errors_2 - syntax_errors_1)*100/syntax_errors_1:+4.0f}%){_get_visual_indicator((syntax_errors_2 - syntax_errors_1)*100/syntax_errors_1 if syntax_errors_1 else None)}" if syntax_errors_1 else 'N/A'}")
     print(f"# INDENT ERRORS    : {indent_errors_2:10d} { f"({indent_errors_2 - indent_errors_1:+10d}, {(indent_errors_2 - indent_errors_1)*100/indent_errors_1:+4.0f}%){_get_visual_indicator((indent_errors_2 - indent_errors_1)*100/indent_errors_1 if indent_errors_1 else None)}" if indent_errors_1 else 'N/A'}")
-    print(f"# LAZY COMMENTS    : {lazy_comments_2:10d} { f"({lazy_comments_2 - lazy_comments_1:+10d}, {(lazy_comments_2 - lazy_comments_1)*100/lazy_comments_1:+4.0f}%){_get_visual_indicator((lazy_comments_2 - lazy_comments_1)*100/lazy_comments_1 if lazy_comments_1 else None)}" if lazy_comments_1 else 'N/A'}")
+    print_metric_diff("LAZY COMMENTS    ", lazy_comments_1, lazy_comments_2)
+
+
+def print_metric_diff(metric_name, value_run_1, value_run_2):
+    print(
+        f"# {metric_name}: {value_run_2:10d} {f"({value_run_2 - value_run_1:+10d}, {(value_run_2 - value_run_1) * 100 / value_run_1:+4.0f}%){_get_visual_indicator((value_run_2 - value_run_1) * 100 / value_run_1 if value_run_1 else None)}" if value_run_1 else 'N/A'}")
+
 
 @total_ordering
 class AiderTestResult(NamedTuple):
@@ -236,18 +242,18 @@ class AiderTestResult(NamedTuple):
         return self.failed_attempt_count
 
 
-def _get_attempt_limit_and_normalized_counts(benchmark_run: dict[str, AiderTestResult]) -> tuple[int, Counter]:
+def _get_attempt_limit_and_normalized_counts(benchmark_run: dict[str, AiderTestResult]) -> tuple[int | None, Counter]:
     result = Counter([t.failed_attempt_count for t in benchmark_run.values()])
     # Find the negative value (if any) and its count
     negative_value = next((k for k in result.keys() if k < 0), None)
     if negative_value is None:
-        return 0, result
+        return None, result
     # Get the count of tests with this negative value
-    negative_count = result[negative_value]
+    max_failed_attempts = result[negative_value]
     # Remove the original negative value from counter
     del result[negative_value]
     # Add the count to -1 in the counter
-    result[-1] = negative_count
+    result[-1] = max_failed_attempts
     return abs(negative_value), result
 
 
