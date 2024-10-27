@@ -244,6 +244,21 @@ class AiderTestResult(NamedTuple):
 
 def _get_attempt_limit_and_normalized_counts(benchmark_run: dict[str, AiderTestResult]) -> tuple[int | None, Counter]:
     result = Counter([t.failed_attempt_count for t in benchmark_run.values()])
+    """
+    Process and normalize the failed attempt counts from a benchmark run.
+    
+    Args:
+    benchmark_run (dict[str, AiderTestResult]): Dictionary mapping test names to their results
+    
+    Returns:
+    tuple[int | None, Counter]: A tuple containing:
+    - The absolute value of the failure limit (if any tests hit it), or None
+    - A Counter object containing:
+    * Counts of tests with 0 or more failed attempts (these eventually passed)
+    * Count of tests with -1 failed attempts (these never passed, hitting the failure limit)
+    Note: All tests that hit the failure limit are normalized to count -1,
+    regardless of the actual negative value used in the input
+    """
     # Find the negative value (if any) and its count
     negative_value = next((k for k in result.keys() if k < 0), None)
     if negative_value is None:
