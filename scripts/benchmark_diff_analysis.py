@@ -200,7 +200,7 @@ def main(benchmark_dir_1: str, benchmark_dir_2: str):
         else:
             prefix = f"#          Pass {attempt_count+1:3d}"
 
-        print(f"{prefix}: {count_2:10d} {f'({count_diff:+10d}, {percent_change:+4.0f}%){_get_visual_indicator(percent_change)}' if count_1 else 'N/A'}")
+        print(f"{prefix}: {count_2:10d} {f'({count_diff:+10d}, {percent_change:+4.0f}%){_get_visual_indicator(percent_change)}' if count_1 else 'N/A'}{_get_visual_indicator(percent_change) if count_1 else ''}")
 
     # TODO Print model and edit_format for each run (just take the first value)
     # Get model and edit format from first test in each run (they should be the same for all tests in a run)
