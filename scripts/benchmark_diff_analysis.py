@@ -38,10 +38,10 @@ def _get_token_change_indicators(test_1: 'AiderTestResult', test_2: 'AiderTestRe
     recv_indicator = "-" * min(10, max(1, int(abs(recv_change) / 10)))
     
     # Right-align received tokens indicator (pad left with spaces)
-    recv_col = f"({recv_indicator:>10})"
+    recv_col = f"({recv_indicator:>14})"
     
     # Left-align sent tokens indicator (pad right with spaces) 
-    sent_col = f"({sent_indicator:<10})"
+    sent_col = f"({sent_indicator:<14})"
     
     return recv_col, sent_col  # received tokens first, then sent tokens
 def main(benchmark_dir_1: str, benchmark_dir_2: str):
