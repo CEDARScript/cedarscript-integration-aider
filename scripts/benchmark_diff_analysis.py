@@ -212,7 +212,7 @@ def main(benchmark_dir_1: str, benchmark_dir_2: str):
     print("@@ ============ PERFORMANCE METRICS  =========== @@")
     print(f"# MODEL            : {model_2.split('/')[-1]:>10} {'(was ' + model_1.split('/')[-1] + ')' if model_1 != model_2 else ''}")
     print(f"# EDIT FORMAT      : {edit_format_2:>10} {'(was ' + edit_format_1 + ')' if edit_format_1 != edit_format_2 else ''}")
-    print(f"# TOTAL TEST COUNT : {len(benchmark_run_2):10d}{f' ({test_count_delta:+3d}, {test_count_delta*100/len(benchmark_run_1):+4.0f}%)' if test_count_delta else ''}{_get_visual_indicator(test_count_delta*100/len(benchmark_run_1) if test_count_delta else None)}")
+    print(f"# TOTAL TEST COUNT : {len(benchmark_run_2):10d} {f'({test_count_delta:+10d}, {test_count_delta*100/len(benchmark_run_1):+4.0f}%){_get_visual_indicator(test_count_delta*100/len(benchmark_run_1) if test_count_delta else None)}' if test_count_delta else ''}")
     print(f"# Max attempt count: {max_failed_attempt_2:10d}{f" ({max_failed_attempt_2 - max_failed_attempt_1:+d})" if max_failed_attempt_2 != max_failed_attempt_1 else ""}")
     print(f"# DURATION hh:mm:ss:    {str(timedelta(seconds=int(duration_2)))} ({'-' if duration_2 < duration_1 else '+'}  {str(timedelta(seconds=int(abs(duration_2 - duration_1))))}, {(duration_2 - duration_1)*100/duration_1:+4.0f}%){_get_visual_indicator((duration_2 - duration_1)*100/duration_1)}")
     print(f"# COST ($)         : {cost_2:10,.2f} {f'({cost_2 - cost_1:+10,.2f}, {(cost_2 - cost_1)*100/cost_1:+4.0f}%){_get_visual_indicator((cost_2 - cost_1)*100/cost_1)}' if cost_1 else 'N/A'}")
