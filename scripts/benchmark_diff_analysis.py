@@ -27,8 +27,8 @@ def _get_token_change_indicators(test_1: 'AiderTestResult', test_2: 'AiderTestRe
     
     Returns:
         tuple containing:
-        - Left-aligned received tokens indicator in parentheses
-        - Left-aligned received tokens indicator in parentheses
+            - Left-aligned received tokens indicator in parentheses
+            - Right-aligned sent tokens indicator in parentheses
     """
     sent_change = ((test_2.sent_tokens - test_1.sent_tokens) * 100 / test_1.sent_tokens) if test_1.sent_tokens else 0
     recv_change = ((test_2.received_tokens - test_1.received_tokens) * 100 / test_1.received_tokens) if test_1.received_tokens else 0
