@@ -105,28 +105,32 @@ def main(benchmark_dir_1: str, benchmark_dir_2: str):
         print()
         print(f"@@ Improved, now PASSED ({len(test_names_improved_now_passes)}) @@")
         for test_name in test_names_improved_now_passes:
-            print(f"++{test_name}: {benchmark_run_1.get(test_name).failed_attempt_count} -> {benchmark_run_2.get(test_name).failed_attempt_count}")
+            sent_ind, recv_ind = _get_token_change_indicators(benchmark_run_1[test_name], benchmark_run_2[test_name])
+            print(f"++ [{benchmark_run_1[test_name].failed_attempt_count} -> {benchmark_run_2[test_name].failed_attempt_count}] {sent_ind} {recv_ind} {test_name}")
 
     test_names_improved_minor = [t for t in test_names_improved if benchmark_run_1[t].failed_attempt_count >= 0]
     if test_names_improved_minor:
         print()
         print(f"@@ Improved, minor ({len(test_names_improved_minor)}) @@")
         for test_name in test_names_improved_minor:
-            print(f"+ {test_name}: {benchmark_run_1.get(test_name).failed_attempt_count} -> {benchmark_run_2.get(test_name).failed_attempt_count}")
+            sent_ind, recv_ind = _get_token_change_indicators(benchmark_run_1[test_name], benchmark_run_2[test_name])
+            print(f"+ [{benchmark_run_1[test_name].failed_attempt_count} -> {benchmark_run_2[test_name].failed_attempt_count}] {sent_ind} {recv_ind} {test_name}")
 
     test_names_worsened_now_fails = [t for t in test_names_worsened if benchmark_run_2[t].failed_attempt_count < 0]
     if test_names_worsened_now_fails:
         print()
         print(f"@@ Worsened, now FAILED ({len(test_names_worsened_now_fails)}) @@")
         for test_name in test_names_worsened_now_fails:
-            print(f"--{test_name}: {benchmark_run_1.get(test_name).failed_attempt_count} -> {benchmark_run_2.get(test_name).failed_attempt_count}")
+            sent_ind, recv_ind = _get_token_change_indicators(benchmark_run_1[test_name], benchmark_run_2[test_name])
+            print(f"-- [{benchmark_run_1[test_name].failed_attempt_count} -> {benchmark_run_2[test_name].failed_attempt_count}] {sent_ind} {recv_ind} {test_name}")
 
     test_names_worsened_minor = [t for t in test_names_worsened if benchmark_run_2[t].failed_attempt_count >= 0]
     if test_names_worsened_minor:
         print()
         print(f"@@ Worsened, still PASSED ({len(test_names_worsened_minor)}) @@")
         for test_name in test_names_worsened_minor:
-            print(f"- {test_name}: {benchmark_run_1.get(test_name).failed_attempt_count} -> {benchmark_run_2.get(test_name).failed_attempt_count}")
+            sent_ind, recv_ind = _get_token_change_indicators(benchmark_run_1[test_name], benchmark_run_2[test_name])
+            print(f"- [{benchmark_run_1[test_name].failed_attempt_count} -> {benchmark_run_2[test_name].failed_attempt_count}] {sent_ind} {recv_ind} {test_name}")
 
     test_names_stable_passed = [t for t in test_names_stable if benchmark_run_1[t].failed_attempt_count >= 0]
     if test_names_stable_passed:
@@ -134,7 +138,8 @@ def main(benchmark_dir_1: str, benchmark_dir_2: str):
         print(f"@@ Stable: PASSED ({len(test_names_stable_passed)}) @@")
         for test_name in test_names_stable_passed:
             failed_attempts_2 = benchmark_run_2.get(test_name).failed_attempt_count
-            print(f"=+{test_name}: {benchmark_run_1.get(test_name).failed_attempt_count}{f" -> {failed_attempts_2}" if failed_attempts_2 is None or failed_attempts_2 < 0 else ''}")
+            sent_ind, recv_ind = _get_token_change_indicators(benchmark_run_1[test_name], benchmark_run_2[test_name])
+            print(f"=+ [{benchmark_run_1[test_name].failed_attempt_count} -> {failed_attempts_2}] {sent_ind} {recv_ind} {test_name}")
 
     test_names_stable_failed = [t for t in test_names_stable if benchmark_run_1[t].failed_attempt_count < 0]
     if test_names_stable_failed:
