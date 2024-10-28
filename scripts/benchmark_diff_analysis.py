@@ -27,7 +27,7 @@ def _get_token_change_indicators(test_1: 'AiderTestResult', test_2: 'AiderTestRe
     
     Returns:
         tuple containing:
-        - Right-aligned sent tokens indicator in parentheses
+        - Left-aligned received tokens indicator in parentheses
         - Left-aligned received tokens indicator in parentheses
     """
     sent_change = ((test_2.sent_tokens - test_1.sent_tokens) * 100 / test_1.sent_tokens) if test_1.sent_tokens else 0
@@ -43,7 +43,7 @@ def _get_token_change_indicators(test_1: 'AiderTestResult', test_2: 'AiderTestRe
     # Left-align received tokens indicator (pad right with spaces) 
     recv_col = f"({recv_indicator:<10})"
     
-    return sent_col, recv_col
+    return recv_col, sent_col  # received tokens first, then sent tokens
 def main(benchmark_dir_1: str, benchmark_dir_2: str):
     """
     Main function to compare two benchmark runs and print the analysis.
