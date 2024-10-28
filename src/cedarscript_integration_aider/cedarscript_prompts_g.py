@@ -249,15 +249,28 @@ module.exports = grammar({
 
     // <specifying-locations-in-code>
     /**
-    lineMarker: Points to specific line via its trimmed contents. You *MUST* strip whitespace from left and right of the value!
-    *NEVER* use an ambiguous line (one that appears 2 or more times) as reference. Instead, prefer a different, nearby line.
+    lineMarker: Points to specific line via:
+    - its *context-relative line number* (best method, as this is guaranteed to be unambiguous. Must use this if other types failed)
+    - its *contents*, if it's unambiguous (don't use line content if the line appears multiple times)
+    - a string that matches from start of line (PREFIX)
+    - a string that matches from end of line (SUFFIX)
+    - a regular expression pattern (REGEX)
     */
-    lineMarker: $ => seq('LINE', field('lineMarker', $.string), optional($.offset_clause)),
+    lineMarker: $ => seq('LINE', choice(
+      field('lineMarker', choice($.string, $.number)), // reference the line content or a context-relative line number
+      seq('REGEX', field('regexMarker', $.string)), // match line by REGEX
+      seq('PREFIX', field('prefixMarker', $.string)), // match line by its prefix
+      seq('SUFFIX', field('suffixMarker', $.string)) // match line by its suffix
+    ), optional($.offset_clause)),
     /**
-    identifierMarker: Points to an identifier (variable, function or class).
-    Use `OFFSET <n>` to pinpoint which (if there are 2 or more with same name)
+    identifierMarker: Name of an identifier (variable, function, method or class).
+    If there are 2 or more with same name, prefixed it with its *parent chain* (names of its parents separated by a dot) to disambiguate it.
+    Another way to disambiguate is to use `OFFSET <n>` to pinpoint one.
+    Example of simple name and *parent chains*:
+    - "my_method" (just the name, if it's unique. Matches any method with that name, regardless of its parents)
+    - "MyClass.my_method" (matches any `my_method` that has `MyClass` as its direct parent. Also matches if `MyClass` itself has other parents)
     */
-    identifierMarker: $ => seq(field('identifier', choice('VARIABLE', 'FUNCTION', 'CLASS')), field('identifierMarker', $.string), optional($.offset_clause)),
+    identifierMarker: $ => seq(field('identifier', choice('VARIABLE', 'FUNCTION', 'METHOD', 'CLASS')), field('identifierMarker', $.string), optional($.offset_clause)),
     marker: $ => choice($.lineMarker, $.identifierMarker),
     /**
     relpos_beforeafter: Points to region immediately before or after a `marker`
@@ -590,16 +603,14 @@ class B
 </li>
 <li>Selecting Reference Points for Code Locations:
 When choosing lines/elements to reference in commands:
-1. Uniqueness Rule: *NEVER* reference an ambiguous line/element (that is, it appears multiple times);
-Check if your chosen reference appears elsewhere in the file;
-If it does, find a unique alternative nearby.
-2. Finding Alternative References: Look for unique comments, function signatures, or class definitions near your target;
-Use structural elements like class/function declarations which tend to be unique.
-3.  Strategies for Common Cases:
-- Function/method bodies: Reference the unique function signature
-- Class methods: Reference the unique method signature
-- Inside loops/conditions: Reference the unique loop/condition line
-- Generic statements: Find unique nearby comments or structural elements
+1. Uniqueness Rule: *NEVER* reference an ambiguous line/identifier (that is, appearing multiple times);
+Check if your chosen reference appears multiple times in the file.
+To disambiguate a line:
+  - Use a *context-relative line number* (it's ALWAYS unique), or
+  - Find a unique alternative nearby.
+To disambiguate an identifier:
+  - Use the *parent chain*: prepend one or more parent names to the identifier name, as in `MyClass.MyOtherClass.my_method`
+</li>
 <li>Common mistakes:
 <from-keyword-ordering>
 # FROM keyword must directly be followed by keyword `FILE` or `PROJECT`, never by `CLASS`, `FUNCTION` or other keywords.
@@ -654,7 +665,122 @@ Add docstring to the function
             content="""
 {fence[0]}CEDARScript
 UPDATE FILE "/dev/stdin"
-INSERT INSIDE FUNCTION "calculate_sum" TOP
+INSERT INSIDE FUNCTION "calculate_sum" TOP -- Using `INSIDE FUNCTION .. TOP` is the *BEST* option to point to add content to the top of the body.
+-- The CONTENT below uses the body (the `INSIDE`) of the function as indent level reference
+WITH CONTENT '''
+@0:\"\"\"Calculate sum of two numbers.
+@0:
+@0:Args:
+@1:a: First number
+@1:b: Second number
+@0:
+@0:Returns:
+@1:Sum of a and b
+\"\"\"
+''';
+{fence[1]}
+""",
+        ),
+        dict(
+            role="user",
+            content="""
+'''python
+def something():
+    pass
+
+
+def calculate_sum(a, b):
+    return a + b
+'''
+Add docstring to the function calculate_sum (but don't use `INSIDE FUNCTION`, as I want to see alternatives)
+            """
+        ),
+        dict(
+            role="assistant",
+            content="""Alas! That would've been the best command for that, but we do have alternatives. \
+Let's use *context-relative line numbers*, which is still an excellent choice.
+Note: As the indent level reference is now the function definition instead of its body, we also need to increment by 1 all relative indents.
+
+{fence[0]}CEDARScript
+UPDATE FUNCTION "calculate_sum" -- this is the contex for line numbering
+FROM FILE "/dev/stdin"
+INSERT AFTER LINE 1 -- This is the context-relative line number. Line 1 is where function `calculate_sum` starts
+-- The CONTENT below uses `LINE 1` (*not* the linfe after it) as indent level reference
+WITH CONTENT '''
+@1:\"\"\"Calculate sum of two numbers.
+@1:
+@1:Args:
+@2:a: First number
+@2:b: Second number
+@1:
+@1:Returns:
+@2:Sum of a and b
+\"\"\"
+''';
+{fence[1]}
+""",
+        ),
+        dict(
+            role="user",
+            content="""
+'''python
+def something():
+    pass
+
+
+def calculate_sum(a, b):
+    return a + b
+'''
+Add docstring to the function calculate_sum (but don't use `INSIDE FUNCTION` nor `LINE 1`, as I want to see alternatives)
+            """
+        ),
+        dict(
+            role="assistant",
+            content="""We still have many options! The next best one would be to use `BEFORE LINE 2` \
+(which points exactly to the same location as `AFTER LINE 1`, albeit with a different relative indent level):
+
+{fence[0]}CEDARScript
+UPDATE FUNCTION "calculate_sum" -- this is the contex for line numbering
+FROM FILE "/dev/stdin"
+INSERT BEFORE LINE 2 -- This is the context-relative line number. Line 2 belongs to the body and contains `return a + b`
+-- The CONTENT below uses `LINE 2` (*not* the linfe before it) as indent level reference
+WITH CONTENT '''
+@0:\"\"\"Calculate sum of two numbers.
+@0:
+@0:Args:
+@1:a: First number
+@1:b: Second number
+@0:
+@0:Returns:
+@1:Sum of a and b
+\"\"\"
+''';
+{fence[1]}
+""",
+        ),
+        dict(
+            role="user",
+            content="""
+'''python
+def a():
+    def calculate_sum(a, b):
+        return a + b
+def b():
+    def calculate_sum(a, b):
+        return a + b
+'''
+Add docstring to the function calculate_sum nested inside b. \
+Briefly explain your selection of reference points for code locations.
+            """
+        ),
+        dict(
+            role="assistant",
+            content="""We cannot simply use `FUNCTION "calculate_sum"`, as its name appears multiple times in the provided script. \
+Let's use the `parent chain` to easily disambiguate it:
+
+{fence[0]}CEDARScript
+UPDATE FILE "/dev/stdin"
+INSERT INSIDE FUNCTION "b.calculate_sum" TOP -- the function to be modified has `b` as its direct parent
 WITH CONTENT '''
 @0:\"\"\"Calculate sum of two numbers.
 @0:
@@ -680,16 +806,19 @@ class B:
     def calculate_sum(self, a, b):
         return a + b
 '''
-Add docstring to the method in class B
+Add docstring to the method in class B. Don't use `parent chain`, as I want to see alternatives.
             """
         ),
         dict(
             role="assistant",
-            content="""
+            content="""We can also use `UPDATE CLASS "B"` as a way to disambiguate the method: it will match any \
+level of nesting for the method, but since the method is unique inside class `B`, we can still use it.
+The parent chain "B.calculate_sum" is more precise (matches the method having class `B` as its direct parent),
+but in this particular case we don't require it.
 {fence[0]}CEDARScript
 UPDATE CLASS "B"
 FROM FILE "/dev/stdin"
-INSERT INSIDE METHOD "calculate_sum" TOP
+INSERT INSIDE METHOD "calculate_sum" TOP -- matches the method at any level of nesting inside class `B`
 WITH CONTENT '''
 @0:\"\"\"Calculate sum of two numbers.
 @0:
@@ -755,40 +884,37 @@ INSERT BEFORE CLASS "MyClass"
 -- 2. Update the copied function to remove references to `self`, now declaring `instance_var_1` as parameter
 UPDATE FUNCTION "myFirstFunction"
   FROM FILE "/dev/stdin"
-REPLACE SEGMENT
-    STARTING AFTER LINE '''def myFirstFunction('''
-    ENDING AT LINE '''self, name: str,'''
+REPLACE LINE 2
 WITH CONTENT '''
-@1:instance_var_1: str, name: str,
+@0:instance_var_1: str, name: str,
 ''';
-UPDATE FUNCTION "myFirstFunction"
+UPDATE FUNCTION "middle" -- We're only using it as a unique reference point to reach `myFirstFunction`
 FROM FILE "/dev/stdin"
-REPLACE SEGMENT
-  STARTING AFTER LINE '''a = doSomething(name, age)'''
-  ENDING AT LINE '''return a + 5 + len(self.instance_var_1) * 7'''
--- `@-1:` is used because the return statement is 1 indent level to the *left* of 'a = doSomething(name, age)' (STARTING reference mark)
+REPLACE LINE 0 -- the line BEFORE function `middle`, that is, the last line of `myFirstFunction`
+-- `@0:` is used because LINE 0 is the return statement of `myFirstFunction`
 WITH CONTENT '''
-@-1:return a + 5 + len(instance_var_1) * 7
+@0:return a + 5 + len(instance_var_1) * 7
 ''';
 
 -- 3. Update ALL call sites of the method `myFirstFunction` to call the new top-level function with the same name, passing `instance_var_1` as argument
-UPDATE FILE "/dev/stdin"
+UPDATE FUNCTION "anotherFunction"
+FROM FILE "/dev/stdin"
 REPLACE SEGMENT
-  STARTING AFTER LINE '''def anotherFunction(self, name: str, age: int):'''
-  ENDING BEFORE LINE '''c = "x" + '"' + "'" + "z"''' -- multi-line string helps avoid escaping `'` and `"`
+  STARTING AT LINE 2 -- "b = checkVal" ...
+  ENDING AT LINE 3 -- "bb = checkVal" ...
 WITH CONTENT '''
 @1:b = checkVal(45, "strict", myFirstFunction(instance_var_1, name, age), 8, "tops")
 @1:bb = checkVal(7, "lax", myFirstFunction(instance_var_1, name, age), 2, "bottom")
 ''';
-UPDATE FILE "/dev/stdin"
-REPLACE LINE '''d = checkVal(45, "strict", self.myFirstFunction(name, age), 8, "tops")'''
+UPDATE FUNCTION "anotherFunction"
+FROM FILE "/dev/stdin"
+REPLACE LINE 6 -- "d = checkVal" ...
 WITH CONTENT '''
 @0:d = checkVal(45, "strict", myFirstFunction(instance_var_1, name, age), 8, "tops")
 ''';
-UPDATE FILE "/dev/stdin"
-REPLACE SEGMENT
-  STARTING AT LINE \"\"\"'9"f', "as'df", self.myFirstFunction(name, age))\"\"\" -- multi-line string used to avoid escaping `'` and `"`
-  ENDING BEFORE LINE '''return b * 3'''
+UPDATE FUNCTION "anotherFunction"
+FROM FILE "/dev/stdin"
+REPLACE LINE 12
 WITH CONTENT '''
 @0:'9"f', "as'df", myFirstFunction(instance_var_1, name, age))
 ''';
@@ -796,7 +922,6 @@ WITH CONTENT '''
 
 Notes:
 1. As the code to be changed was provided in your message, we're using file name "/dev/stdin".
-2. The line "class MyClass():" was used as the insertion reference to reduce any chances of failing to apply the changes.
 """,
         ),
         dict(
@@ -844,26 +969,24 @@ INSERT BEFORE CLASS "MyClass"
 -- 2. Update the copied function to remove references to `self`, now declaring `instance_var_1` as parameter
 UPDATE FUNCTION "myFirstFunction"
   FROM FILE "/dev/stdin"
-REPLACE SEGMENT
-  STARTING AT LINE '''def myFirstFunction(self, name: str, age: int):'''
-  ENDING BEFORE LINE '\"\"\"Lorem ipsum dolor sit amet' -- Chose the first line below the starting line to get the shortest segment possible
+REPLACE LINE 1
 WITH CONTENT '''
 @0:def myFirstFunction(instance_var_1: str, name: str, age: int):
 ''';
-UPDATE FUNCTION "myFirstFunction"
+UPDATE FUNCTION "middle" -- We're only using it as a unique reference point to reach `myFirstFunction`
   FROM FILE "/dev/stdin"
-REPLACE SEGMENT
-  STARTING AFTER LINE '''a = doSomething(name, age)'''
-  ENDING AT LINE '''return a + 5 + len(self.instance_var_1) * 7'''
+REPLACE LINE 0 -- the line BEFORE function `middle`, that is, the last line of `myFirstFunction`
+-- `@0:` is used because LINE 0 is the return statement of `myFirstFunction`
 WITH CONTENT '''
-@-1:return a + 5 + len(instance_var_1) * 7
+@0:return a + 5 + len(instance_var_1) * 7
 ''';
 
 -- 3. Update ALL call sites of the method `myFirstFunction` to call the new top-level function with the same name, passing `instance_var_1` as argument
-UPDATE FILE "/dev/stdin"
+UPDATE FUNCTION "anotherFunction"
+FROM FILE "/dev/stdin"
 REPLACE SEGMENT
-  STARTING AFTER LINE "# Check and store in 'b' and 'bb'"
-  ENDING BEFORE LINE '''return b + bb'''
+  STARTING AT LINE 3 -- "b = checkVal" ...
+  ENDING AT LINE 4 -- "bb = checkVal" ...
 WITH CONTENT '''
 @0:b = checkVal(45, "strict", myFirstFunction(instance_var_1, name, age), 8, "tops")
 @0:bb = checkVal(7, "lax", myFirstFunction(instance_var_1, name, age), 2, "bottom")
@@ -872,7 +995,6 @@ WITH CONTENT '''
 
 Notes:
 1. As the code to be changed was provided in your message, we're using file name "/dev/stdin".
-2. The line "class MyClass():" was used as the insertion reference to reduce any chances of failing to apply the changes.
 """,
         ),
         dict(
@@ -1108,23 +1230,19 @@ WITH CONTENT '''
 ''';
 
 -- 3. Update ALL call sites of the method `calc1` to call the new top-level function with the same name, passing `instance_var` as argument
-UPDATE FUNCTION "calc2" OFFSET 1 -- There are 2 `calc2` methods. We skip 1, meaning we target the second one (which is the one in the `A` class)
+UPDATE FUNCTION "A.calc2"
   FROM FILE "/dev/stdin"
-REPLACE SEGMENT
-  STARTING AFTER LINE '''# Call calc1...''' -- We cannot use line 'c = ["x", str(self.calc1(' as reference marker because there are 2 or more matches for it
-  ENDING BEFORE LINE '''5), "xx"]''' -- We cannot use line 'c = ["x", str(self.calc1(' as reference marker because there are 2 or more matches for it
+REPLACE LINE 5
 WITH CONTENT '''
 @0:c = ["x", str(calc1(self.instance_var,
 ''';
 UPDATE FUNCTION "calc2" OFFSET 1
   FROM FILE "/dev/stdin"
-REPLACE SEGMENT
-  STARTING AFTER LINE '''5), "xx"]'''
-  ENDING BEFORE LINE '''6), "xx"]'''
+REPLACE LINE 7
 WITH CONTENT '''
-@-1:c = ["x", str(calc1(self.instance_var,
-'''; -- Above, we used relative indent level -1 because the line to be replaced is 1 level to the *LEFT* of '5), "xx"]' (the starting reference line)
--- Note to self: A line marker referencing 'c = ["x", str(self.calc1(' would be ambiguous, since there are 2 or more matches for it. Thus, it's important to use another nearby line marker as reference.
+@01:c = ["x", str(calc1(self.instance_var,
+''';
+-- Note to self: A line marker referencing 'c = ["x", str(self.calc1(' would be ambiguous, since there are 2 or more matches for it. Thus, it's important to use context-relative line numbers.
 
 -- 4. Delete the bad line
 UPDATE FILE "/dev/stdin"
@@ -1169,29 +1287,26 @@ WITH CONTENT'''
 ''';
 
 -- 2. Update the function signature of `calc2()` to add parameter `base_tax: float = 1.3` as the last one
-UPDATE FILE "/dev/stdin"
-REPLACE LINE '''def calc2(a):'''
+UPDATE FUNCTION "calc2"
+  FROM FILE "/dev/stdin"
+REPLACE LINE 1
 WITH CONTENT'''
 @0:def calc2(a, base_tax: float = 1.3):
 ''';
 
 -- 3. Update ALL call sites of `calc1()` to pass `base_tax` as the first argument
 UPDATE FILE "/dev/stdin"
-REPLACE SEGMENT
-  STARTING AFTER LINE '''def calc2(a, base_tax: float = 1.3):''' -- We cannot use line 'c = ["x", str(calc1(' as reference marker because there are 2 or more matches for it
-  ENDING BEFORE LINE '''5), "xx"]''' -- We cannot use line 'c = ["x", str(calc1(' as reference marker because there are 2 or more matches for it
+REPLACE LINE 2
 WITH CONTENT '''
-@1:c = ["x", str(calc1(base_tax,
-'''; -- Above, we used relative indent level 1 because the line to be replaced is 1 level to the *RIGHT* of 'def calc2(a, base_tax: float = 1.3):' (the starting reference line)
+@0:c = ["x", str(calc1(base_tax,
+''';
 UPDATE FUNCTION "calc2"
   FROM FILE "/dev/stdin"
-REPLACE SEGMENT
-  STARTING AFTER LINE '''5), "xx"]'''
-  ENDING BEFORE LINE '''6), "xx"]'''
+REPLACE LINE 4
 WITH CONTENT '''
-@-1:c = ["x", str(calc1(base_tax,
-'''; -- Above, we used relative indent level -1 because the line to be replaced is 1 level to the *LEFT* of '5), "xx"]' (the starting reference line)
--- Note to self: A line marker referencing 'c = ["x", str(calc1(' would be ambiguous, since there are 2 or more matches for it. Thus, it's important to use another nearby line marker as reference.
+@0:c = ["x", str(calc1(base_tax,
+''';
+-- Note to self: A line marker referencing 'c = ["x", str(calc1(' would be ambiguous, since there are 2 or more matches for it. Thus, it's important to use context-relative line numbers.
 {fence[1]}""",
         ),
     dict(
@@ -1240,7 +1355,7 @@ INSERT BEFORE CLASS "A"
 -- 2. Update the copied function to remove references to `self`
 UPDATE FUNCTION "_candidate"
   FROM FILE "/dev/stdin"
-REPLACE LINE '''def _candidate(self, a, b, c):'''
+REPLACE LINE 1
 WITH CONTENT '''
 @0:def _candidate(a, b, c):
 ''';
@@ -1248,7 +1363,7 @@ WITH CONTENT '''
 -- 3. Update ALL call sites of the method `_candidate()` to call the new top-level function with the same name
 UPDATE METHOD "_check"
   FROM FILE "/dev/stdin"
-REPLACE LINE '''self._candidate(''' -- There's only 1 call site and this line marker is unambiguous, so it's more concise to just replace a LINE instead of a SEGMENT
+REPLACE LINE '''self._candidate(''' -- There's only 1 call site and this line marker is unambiguous
 WITH CONTENT '''
 @0:_candidate(
 ''';
@@ -1301,7 +1416,7 @@ INSERT BEFORE CLASS "A"
 -- 2. Update the copied function to remove references to `self`
 UPDATE FUNCTION "_candidate"
   FROM FILE "/dev/stdin"
-REPLACE LINE '''def _candidate(self, a, b, c):'''
+REPLACE LINE 1
 WITH CONTENT '''
 @0:def _candidate(a, b, c):
 ''';
@@ -1309,7 +1424,7 @@ WITH CONTENT '''
 -- 3. Update ALL call sites of the method `_candidate()` to call the new top-level function with the same name
 UPDATE METHOD "_check"
   FROM FILE "/dev/stdin"
-REPLACE LINE '''self._candidate(''' -- There's only 1 call site and this line marker is unambiguous, so it's more concise to just replace a LINE instead of a SEGMENT
+REPLACE LINE '''self._candidate(''' -- There's only 1 call site and this line marker is unambiguous
 WITH CONTENT '''
 @0:_candidate(
 ''';
