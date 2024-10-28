@@ -250,7 +250,7 @@ module.exports = grammar({
     // <specifying-locations-in-code>
     /**
     lineMarker: Points to specific line via:
-    - its *context-relative line number* (best method, as this is guaranteed to be unambiguous. Must use this if \
+    - its *context-relative line number* (best method. Must use this if \
     other types failed. Line counting starts at 1 which points to the line where the *definition* of the identifier starts.\
     For functions/methods, it's where the signature starts);
     - its *contents*, if it's unambiguous (don't use line content if the line appears multiple times);
@@ -329,10 +329,17 @@ module.exports = grammar({
 
     /**
     relative_indentation: Helps maintain proper code structure when inserting or replacing code.
-    Sets the indentation level relative to the context specified in the command:
-    <li>`INSIDE (FUNCTION|CLASS)`: Reference is the body of the function or class</li>
-    <li>`(BEFORE|AFTER) (LINE|FUNCTION|CLASS)`: Reference is line, function, or class, regardless of whether BEFORE or AFTER is used</li>
-    When `rel_indent` is 0, code is put at the same level as the reference.
+    Sets the indentation *level* relative to the context specified in the command:
+    <li>`INSIDE (FUNCTION|METHOD|CLASS)`: Reference is the *body* of the identifier</li>
+    <li>`(BEFORE|AFTER) (LINE|FUNCTION|METHOD|CLASS)`: (regardless of whether BEFORE or AFTER is used)
+    For `LINE`, reference is itself;
+    For an identifier, reference is the first line where the function/method signature appears or the class definition starts
+    </li>
+    <li>`REPLACE LINE`: reference is itself;
+    </li>
+    <li>`REPLACE (FUNCTION|METHOD|CLASS)`: Reference is the first line where the function/method signature appears or the class definition starts
+    </li>
+    When `rel_indent` is 0, code is put at the *same level* as the reference.
     */
     relative_indentation: $ => seq('RELATIVE INDENTATION', field('rel_indent', $.number)),
 
@@ -358,10 +365,12 @@ The patter is @N:line where:
 </prefix-examples>
 <reference-point>
 Some reference points:
-- AFTER/BEFORE LINE/FUNCTION/CLASS: The referenced item (rather than one line after or before it)
-- INSERT INSIDE FUNCTION/CLASS TOP/BOTTOM: The function/class body
+- AFTER/BEFORE LINE/FUNCTION/CLASS: The referenced item itself (rather than one line after or before it)
+- INSERT INSIDE (FUNCTION|METHOD|CLASS): The identifier's body
+- REPLACE LINE: the line itself
+- REPLACE (FUNCTION|METHOD|CLASS): the first line of the identifier's definition being replaced (not its body)
 - `BODY`: The body of the function/class being modified
-- `WHOLE`: The first line of the block where the function/class etc is defined
+- `WHOLE`: The first line of the block where the function/class etc is defined (where its signature first apears)
 </reference-point>
 <key-points>
 The relative indent level *MUST* change logically with code structure:                                                                                                       
@@ -836,6 +845,48 @@ WITH CONTENT '''
 @0:Returns:
 @1:Sum of a and b
 \"\"\"
+''';
+{fence[1]}
+""",
+        ),
+        dict(
+            role="user",
+            content="""
+'''python
+def something():
+    pass
+
+class A:
+    def a(self, a1):
+        c, d = self.b(a1x)
+        if a1 > 0:
+            c = "x" + a1
+        return 1,2
+    def b(self, a1):
+        c, d = self.b(a1x)
+        if a1 > 0:
+            c = "x" + a1
+        return 1,2
+'''
+a1x is a mistake. It should be a1
+            """
+        ),
+        dict(
+            role="assistant",
+            content="""{fence[0]}CEDARScript
+UPDATE METHOD "a" -- this is the contex for line numbering
+FROM FILE "/dev/stdin"
+REPLACE LINE 2 -- Line counting starts at `def a(self, a1):`, so line 2 is where the *body* starts (it's `c, d = self.b(a1x)`)
+-- The CONTENT below uses `LINE 2` as indent level reference
+WITH CONTENT '''
+@0:c, d = self.b(a1)
+''';
+UPDATE METHOD "b" -- this is the contex for line numbering
+FROM FILE "/dev/stdin"
+REPLACE LINE 2 -- Line counting starts at `def a(self, a1):`, so line 2 is where the *body* starts (it's `c, d = self.b(a1x)`)
+-- The CONTENT below uses `LINE 2` as indent level reference
+WITH CONTENT '''
+@0:c, d = self.b(a1)
 ''';
 {fence[1]}
 """,
