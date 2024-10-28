@@ -250,11 +250,13 @@ module.exports = grammar({
     // <specifying-locations-in-code>
     /**
     lineMarker: Points to specific line via:
-    - its *context-relative line number* (best method, as this is guaranteed to be unambiguous. Must use this if other types failed)
-    - its *contents*, if it's unambiguous (don't use line content if the line appears multiple times)
-    - a string that matches from start of line (PREFIX)
-    - a string that matches from end of line (SUFFIX)
-    - a regular expression pattern (REGEX)
+    - its *context-relative line number* (best method, as this is guaranteed to be unambiguous. Must use this if \
+    other types failed. Line counting starts at 1 which points to the line where the *definition* of the identifier starts.\
+    For functions/methods, it's where the signature starts);
+    - its *contents*, if it's unambiguous (don't use line content if the line appears multiple times);
+    - a string that matches from start of line (PREFIX);
+    - a string that matches from end of line (SUFFIX);
+    - a regular expression pattern (REGEX);
     */
     lineMarker: $ => seq('LINE', choice(
       field('lineMarker', choice($.string, $.number)), // reference the line content or a context-relative line number
@@ -606,12 +608,17 @@ When choosing lines/elements to reference in commands:
 1. Uniqueness Rule: *NEVER* reference an ambiguous line/identifier (that is, appearing multiple times);
 Check if your chosen reference appears multiple times in the file.
 To disambiguate a line:
-  - Use a *context-relative line number* (it's ALWAYS unique), or
+  - Use a *context-relative line number* (it's relative to an identifier and ALWAYS unique. Starts at 1, corresponding \
+ to the first line of the *definition* for the identifier, not its body), or
   - Find a unique alternative nearby.
 To disambiguate an identifier:
   - Use the *parent chain*: prepend one or more parent names to the identifier name, as in `MyClass.MyOtherClass.my_method`
 </li>
 <li>Common mistakes:
+<context-relative-line-numbers>
+Incorrect: Start counting at the function/method's body
+Correct: Start counting at the first line where the function/method's signature appears.
+</context-relative-line-numbers>
 <from-keyword-ordering>
 # FROM keyword must directly be followed by keyword `FILE` or `PROJECT`, never by `CLASS`, `FUNCTION` or other keywords.
 1) Incorrect: `FROM` followed by `CLASS`, as in `UPDATE FILE "file.py" REPLACE FUNCTION "__init__" FROM CLASS "A"`
@@ -702,10 +709,10 @@ Let's use *context-relative line numbers*, which is still an excellent choice.
 Note: As the indent level reference is now the function definition instead of its body, we also need to increment by 1 all relative indents.
 
 {fence[0]}CEDARScript
-UPDATE FUNCTION "calculate_sum" -- this is the contex for line numbering
+UPDATE FUNCTION "calculate_sum" -- this is the contex for line numbers. Line counting starts 
 FROM FILE "/dev/stdin"
-INSERT AFTER LINE 1 -- This is the context-relative line number. Line 1 is where function `calculate_sum` starts
--- The CONTENT below uses `LINE 1` (*not* the linfe after it) as indent level reference
+INSERT AFTER LINE 1 -- This is the context-relative line number. Line 1 is where the definition for the identifier `calculate_sum` starts 
+-- The CONTENT below uses `LINE 1` (*not* the line after it) as indent level reference
 WITH CONTENT '''
 @1:\"\"\"Calculate sum of two numbers.
 @1:
@@ -742,8 +749,8 @@ Add docstring to the function calculate_sum (but don't use `INSIDE FUNCTION` nor
 {fence[0]}CEDARScript
 UPDATE FUNCTION "calculate_sum" -- this is the contex for line numbering
 FROM FILE "/dev/stdin"
-INSERT BEFORE LINE 2 -- This is the context-relative line number. Line 2 belongs to the body and contains `return a + b`
--- The CONTENT below uses `LINE 2` (*not* the linfe before it) as indent level reference
+INSERT BEFORE LINE 2 -- This is the context-relative line number. Line 2 is where the *body* starts (it's `return a + b`)
+-- The CONTENT below uses `LINE 2` (*not* the line before it) as indent level reference
 WITH CONTENT '''
 @0:\"\"\"Calculate sum of two numbers.
 @0:
@@ -1242,7 +1249,8 @@ REPLACE LINE 7
 WITH CONTENT '''
 @01:c = ["x", str(calc1(self.instance_var,
 ''';
--- Note to self: A line marker referencing 'c = ["x", str(self.calc1(' would be ambiguous, since there are 2 or more matches for it. Thus, it's important to use context-relative line numbers.
+-- Note to self: A line marker referencing 'c = ["x", str(self.calc1(' would be ambiguous, since there are 2 or more \
+matches for it. Thus, it's important to use context-relative line numbers.
 
 -- 4. Delete the bad line
 UPDATE FILE "/dev/stdin"
@@ -1306,7 +1314,8 @@ REPLACE LINE 4
 WITH CONTENT '''
 @0:c = ["x", str(calc1(base_tax,
 ''';
--- Note to self: A line marker referencing 'c = ["x", str(calc1(' would be ambiguous, since there are 2 or more matches for it. Thus, it's important to use context-relative line numbers.
+-- Note to self: A line marker referencing 'c = ["x", str(calc1(' would be ambiguous, since there are 2 or more \
+matches for it. Thus, it's important to use context-relative line numbers.
 {fence[1]}""",
         ),
     dict(
