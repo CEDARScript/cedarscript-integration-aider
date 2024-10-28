@@ -33,15 +33,15 @@ def _get_token_change_indicators(test_1: 'AiderTestResult', test_2: 'AiderTestRe
     sent_change = ((test_2.sent_tokens - test_1.sent_tokens) * 100 / test_1.sent_tokens) if test_1.sent_tokens else 0
     recv_change = ((test_2.received_tokens - test_1.received_tokens) * 100 / test_1.received_tokens) if test_1.received_tokens else 0
     
-    # Generate the indicators (about 7% change per character, so 14 chars = ~100% change)
-    sent_indicator = "+" * min(14, max(1, int(abs(sent_change) / 7)))
-    recv_indicator = "-" * min(14, max(1, int(abs(recv_change) / 7)))
+    # Generate the indicators (about 5% change per character, so 20 chars = ~100% change)
+    sent_indicator = "+" * min(20, max(1, int(abs(sent_change) / 5)))
+    recv_indicator = "-" * min(20, max(1, int(abs(recv_change) / 5)))
     
     # Right-align received tokens indicator (pad left with spaces)
-    recv_col = f"({recv_indicator:>14})"
+    recv_col = f"({recv_indicator:>20})"
     
     # Left-align sent tokens indicator (pad right with spaces) 
-    sent_col = f"({sent_indicator:<14})"
+    sent_col = f"({sent_indicator:<20})"
     
     return recv_col, sent_col  # received tokens first, then sent tokens
 def main(benchmark_dir_1: str, benchmark_dir_2: str):
