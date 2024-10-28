@@ -22,7 +22,7 @@ def _get_visual_indicator(percent_change: float | None) -> str:
     indicator_length = min(20, max(1, int(abs_change / 10)))  # 1 char per 10% change, max 20
     return " " + ("+" if percent_change > 0 else "-") * indicator_length
 
-def _get_token_change_indicators(test_1: AiderTestResult, test_2: AiderTestResult) -> tuple[str, str]:
+def _get_token_change_indicators(test_1: 'AiderTestResult', test_2: 'AiderTestResult') -> tuple[str, str]:
     """Generate visual indicators for token changes between two test runs.
     
     Returns:
