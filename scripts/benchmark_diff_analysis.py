@@ -22,6 +22,28 @@ def _get_visual_indicator(percent_change: float | None) -> str:
     indicator_length = min(20, max(1, int(abs_change / 10)))  # 1 char per 10% change, max 20
     return " " + ("+" if percent_change > 0 else "-") * indicator_length
 
+def _get_token_change_indicators(test_1: AiderTestResult, test_2: AiderTestResult) -> tuple[str, str]:
+    """Generate visual indicators for token changes between two test runs.
+    
+    Returns:
+        tuple containing:
+        - Right-aligned sent tokens indicator in parentheses
+        - Left-aligned received tokens indicator in parentheses
+    """
+    sent_change = ((test_2.sent_tokens - test_1.sent_tokens) * 100 / test_1.sent_tokens) if test_1.sent_tokens else 0
+    recv_change = ((test_2.received_tokens - test_1.received_tokens) * 100 / test_1.received_tokens) if test_1.received_tokens else 0
+    
+    # Generate the indicators
+    sent_indicator = "+" * min(10, max(1, int(abs(sent_change) / 10)))
+    recv_indicator = "-" * min(10, max(1, int(abs(recv_change) / 10)))
+    
+    # Right-align sent tokens indicator (pad left with spaces)
+    sent_col = f"({sent_indicator:>10})"
+    
+    # Left-align received tokens indicator (pad right with spaces) 
+    recv_col = f"({recv_indicator:<10})"
+    
+    return sent_col, recv_col
 def main(benchmark_dir_1: str, benchmark_dir_2: str):
     """
     Main function to compare two benchmark runs and print the analysis.
@@ -120,7 +142,8 @@ def main(benchmark_dir_1: str, benchmark_dir_2: str):
         print(f"@@ Stable: FAILED ({len(test_names_stable_failed)}) @@")
         for test_name in test_names_stable_failed:
             failed_attempts_2 = benchmark_run_2.get(test_name).failed_attempt_count
-            print(f"=-{test_name}: {benchmark_run_1.get(test_name).failed_attempt_count}{f" -> {failed_attempts_2}" if failed_attempts_2 is None or failed_attempts_2 < 0 else ''}")
+            sent_ind, recv_ind = _get_token_change_indicators(benchmark_run_1[test_name], benchmark_run_2[test_name])
+            print(f"=- [{benchmark_run_1[test_name].failed_attempt_count} -> {failed_attempts_2}] {sent_ind} {recv_ind} {test_name}")
 
     print()
     print(f"--- {benchmark_dir_1.split('/')[-1]}")
