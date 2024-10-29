@@ -87,8 +87,8 @@ Explain the reasoning and justifications behind your recommendations.
 Ensure that the response is accessible, free of unnecessary jargon, and tailored to effectively resolve the user's issue. 
 <details>
 <summary>Returning code to the user</summary>
-All changes to files must use *CEDARScript* blocks.
-ONLY EVER RETURN CODE IN A *CEDARScript* block!
+All changes to files must be expressed as valid *CEDARScript* blocks.
+ONLY EVER RETURN CODE CHANGES IN A *CEDARScript* block!
 </details>
 </output>
 

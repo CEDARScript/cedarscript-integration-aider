@@ -10,390 +10,172 @@ class CEDARScriptPromptsGrammar(CEDARScriptPromptsBase):
 
     final_remarks = CEDARScriptPromptsBase.final_remarks_brain
 
-    edit_format_training = """<training><p>Learning CEDARScript</p>
-Please read the tree-sitter grammar rules (enclosed by <grammar.js> tags) to learn the syntax and how to use CEDARScript:
-<grammar.js>
-const SELECT_FILENAMESPATHS_TARGET = seq('FILE', choice('NAMES', 'PATHS'))
-const SELECT_OTHER_TARGETS = choice(
-  seq('FILE', 'CONTENTS'),
-  seq('CLASS', choice('NAMES', 'CONTENTS')),
-  seq('FUNCTION', choice('NAMES', 'SIGNATURES', 'CONTENTS')),
-  seq('VARIABLE', choice('NAMES', 'CONTENTS')),
-  'IDENTIFIERS'
-);
-/**
-- WHOLE: the whole chosen item;
-- BODY: Only the function body (its *signature* is *NOT* considered);
-*/
-const BODY_OR_WHOLE = field('bow', choice('BODY', 'WHOLE'))
+    edit_format_training = """## CEDARScript Quick Reference Guide
+It's a *SQL-like* language used to express code manipulations (via DDL and DML Write commands) and to help an LLM examine and understand the codebase (via DML Read-Only command).
+<core-commands>
+<DML>
+# Read-only command
+<syntax-high-level>
+<dl>
+<dt>SELECT <target> FROM <source> [WHERE <condition>] [LIMIT <n>];</dt>
+<dd>Read-only command. Used to glean information about the code base being examined.</dd>
+<dd>Use cases:
+- Understanding code structure;
+- Finding relevant files/classes/functions/variables that may deal with a certain topic
+-- (ex.: if a user may want to find all places that deal with payments, search for 'payment')
+- Displaying code elements to user
+</dd>
+</dl>
+</syntax-high-level>
 
-/**
-<about>CEDARScript, SQL-like language used to express code manipulations (via DDL and DML Write commands) and to help an LLM examine and understand the codebase (via DML Read-Only command)</about>
-*/
-module.exports = grammar({
-  name: 'CEDARScript',
+# Code Modification commands
+<syntax-high-level>
+<dl>
+<dt>UPDATE <update-target> <update-action> [WITH <contents>];</dt>
+<dd>The main CEDARScript UPDATE command structure. Square brackets denote optional parts.</dd>
+<dd>Use cases:
+- Creating or replacing classes, functions or other code in existing files/classes/functions etc
+- Replacing specific lines of existing code
+- Performing complex code transformations using refactoring patterns
+- etc...
+</dd>
 
-  extras: $ => [
-    /\\s|\\r?\\n/,
-    $.comment
-  ],
+# Where:
 
-  rules: {
-    source_file: $ => repeat(seq(
-      $._command,
-      optional($.command_separator)
-    )),
+<dt>update-target: [<identifierMarker> FROM] FILE "<path>"</dt>
+<dd>Specifies what to update:
+- Direct file update (FILE "path"); Sets *reference point* for *vertical positioning* to the first line in the file.
+- A specific <identifierMarker> FROM FILE "path"; Sets *reference point* for *vertical positioning* to the \
+first line where the identifier is declared (function signature, etc)
+</dd>
+<dd>Sets *reference point* for *vertical positioning* (Context-Relative Line Numbers)</dd>
 
-    _command: $ => choice(
-      // DDL
-      $.create_command,
-      $.rm_file_command,
-      $.mv_file_command,
-      // DML (write)
-      $.update_command,
-      // DML (Read-Only)
-      $.select_command,
-      prec(-1, alias($.invalid_move_command, $.error))
-    ),
-    invalid_move_command: $ => seq(
-      'MOVE',
-      choice('FILE', 'FUNCTION', 'CLASS', 'VARIABLE'),
-    ),
-    /**
-    Syntax: CREATE FILE "<path/to/new-file>" WITH CONTENT '''<content>''';
-    Only for new files. Fails if file already exists.
-    */
-    create_command: $ => seq(
-      'CREATE', $.singlefile_clause,
-      'WITH', $.content_clause
-    ),
+<dt>update-action: (<action-mos> | <action-region>)</dt>
+<dd>Possible actions: DELETE | MOVE | INSERT | REPLACE</dd>
+<dd>Sets *reference point* for *horizontal positioning* (Relative Indent Level)</dd>
+<dd>The reference point is the term chosen for the (MOVE|INSERT|REPLACE) action</dd>
 
-    /**
-    Syntax: RM FILE "<path/to/file>";
-    Use cases: Delete file from the codebase
-    */
-    rm_file_command: $ => seq(
-      'RM', $.singlefile_clause
-    ),
+<dt>contents: (<content_literal> | <content_from_segment>)</dt>
+<dd>Optional specification of new content:
+- content_literal: direct text using <relative-indent-level-string>
+- content_from_segment: content taken from existing code
+</dd>
 
-    /**
-    Syntax: MV FILE "<source-file>" TO "<target-file>";
-    Use cases: Renaming a file, moving a file to another path (target file is overwritten if existing).
-    <example><goal>Rename "old.js", then move "config.json" to "production" folder</goal>
-    ```CEDARScript
-    -- Rename "old.js"
-    MV FILE "src/old.js" TO "src/new.js";
-    -- Overwrite development config with production config
-    MV FILE "production/config.ini" TO "development/config.ini";
-    ```
-    </example>
-    */
-    mv_file_command: $ => seq(
-      'MV', $.singlefile_clause, $.to_value_clause
-    ),
+<dt>action-mos   : ( <update_delete_region_clause> | MOVE <marker_or_segment> <update_move_clause_destination> | <insert_clause> | <replace_region_clause> )</dt>
+<dd>Use when update-target is a FILE</dd>
+<dt>action-region: ( <update_delete_region_clause> | MOVE <region_field>      <update_move_clause_destination> | <insert_clause> | <replace_region_clause> )</dt>
+<dd>Use when update-target is an <identifierMarker></dd>
 
-    /**
-    Syntax (simplified): UPDATE <singlefile or identifier_from_file> <update type>;
-    <use-cases>
-    - Creating or replacing classes, functions or other code in existing files/classes/functions
-    - Replacing specific lines of existing code
-    - Performing complex code transformations using refactoring patterns
-    - etc...
-    </use-cases>
-    */
-    update_command: $ => seq(
-      'UPDATE',
-      choice(
-        field('singleFile_clause',
-          seq(
-            $.singlefile_clause,
-            choice(
-              $.update_delete_region_clause,
-              $.update_move_mos_clause,
-              seq(
-                choice(
-                  $.insert_clause,
-                  $.replace_region_clause
-                ),
-                seq('WITH', choice($.content_clause, $.content_from_segment))
-              )
-            )
-          )
-        ),
-        field('identifierInFile_clause',
-          seq(
-            $.identifier_from_file,
-            choice(
-              $.update_delete_region_clause,
-              $.update_move_region_clause,
-              seq(
-                choice(
-                  $.insert_clause,
-                  $.replace_region_clause
-                ),
-                seq('WITH', choice($.content_clause, $.content_from_segment))
-              )
-            )
-          )
-        ),
-        $.update_project_clause
-      )
-    ),
+</dl>
+</syntax-high-level>
 
-    insert_clause: $ => seq('INSERT', $.relpos_bai),
+<syntax-detailed>
+<dl>
 
-    /**
-    Define what to be replaced in the chosen function, class or file.
-    */
-    replace_region_clause: $ => seq('REPLACE', $.region_field),
-    // ---
+# 3 forms are valid:
 
-    /**
-    refactor_language_field: Only language 'rope' is supported. Works only with Python codebases.
-    */
-    refactor_language_field: $ => seq('REFACTOR LANGUAGE', field('refactor_language', $.string)),
-    pattern_field: $ => seq('PATTERN', field('pattern', $.string)),
-    goal_field: $ => seq('GOAL', field('goal', $.string)),
+1. <dt>UPDATE FILE "<path>" <action-mos> [WITH <contents>]</dt>
+<dd>Sets *reference point* for *vertical positioning* to the first line in the file</dd>
 
-    /**
-    update_delete_region_clause: *NOT* top-level command. Used inside the `UPDATE` command to specify deletion of code parts.
-    */
-    update_delete_region_clause: $ => seq('DELETE', $.region_field),
-    // ---
+2. <dt>UPDATE <identifierMarker> FROM FILE "<path>" <action-region> [WITH <contents>]</dt>
+<dd>Sets *reference point* for *vertical positioning* to the first line where the identifier is declared \
+(function signature, etc)</dd>
 
-    /**
-    update_project_clause: Advanced pattern-based refactorings.
-    Indirectly use the `Restructure` class in the 'Rope' refactoring library to perform complex code transformations using patterns.
-    These patterns can match and replace code structures in your project.
-    */
-    update_project_clause: $ => seq('PROJECT', $.refactor_language_field,
-      'WITH', $.pattern_field,
-      'WITH', $.goal_field,
-    ),
-    update_move_clause_destination: $ => field('move_destination', seq(
-      optional(seq('TO', $.singlefile_clause)), // `TO` can ONLY be used if it points to a different file
-      $.insert_clause,
-      optional($.relative_indentation)
-    )),
+3. <dt>UPDATE PROJECT REFACTOR LANGUAGE "<string>" WITH PATTERN '''<string>''' [WITH GOAL '''<string>''']</dt>
+<dd>Only languages "Rope" (for Python codebases) and "Comby" (for any codebase) are supported</dd>
+<dd>Used for advanced pattern-based refactorings on any kind of code or data format (as HTML or JSON)</dd>
+<dd>LANGUAGE "Rope": Indirectly use the `Restructure` class in the 'Rope' refactoring library to perform complex code transformations using patterns</dd>
+<dd>LANGUAGE "Comby": Use lightweight templates to easily search and change code or data formats. Comby is designed to work on any language or data format</dd>
 
-    // update_move_mos_clause, update_move_region_clause
-    /**
-    `MOVE` is only used as part of the UPDATE command for moving code within a file.
-    Unlike CREATE, RM, or UPDATE, it is *NOT* a top-level command.
-    */
-    update_move_mos_clause: $ => seq('MOVE', field('move_mos_source', $.marker_or_segment), $.update_move_clause_destination),
-    update_move_region_clause: $ => seq('MOVE', field('move_region_source', $.region_field), $.update_move_clause_destination),
-    // ---
+# Where:
 
-    /**
-    Syntax: (VARIABLE|FUNCTION|CLASS) "<name>" [OFFSET <offset>] FROM FILE "<path/to/file>"
-    Use cases: Specify an identifier in a given file.
-    <params>
-    - `<name>`: Identifies the name of a variable, function or class as the item of interest in the file.
-    - `<offset>`: Specifies how many items to skip. Mandatory when there are 2 or more matching elements. See details in `offset_clause`.
-    </params>
-    */
-    identifier_from_file: $ => seq(
-      $.identifierMarker, 'FROM', $.singlefile_clause,
-      optional($.where_clause)
-    ),
+<dt>update_delete_region_clause: DELETE <region_field></dt>
+<dd>Removes a region of code in a file</dd>
+<dt>insert_clause: INSERT <relpos_bai></dt>
+<dd>Specifies where content will be placed</dd>
+<dd>Used as reference point for *horizontal positioning* only (*NOT* for vertical positioning)</dd>
 
-    /**
-    Read-only command. Used to glean information about the code base being examined.
-    <use-cases>
-    - Understanding code structure;
-    - Finding relevant files/classes/functions/variables that may deal with a certain topic
-       -- (ex.: if a user may want to find all places that deal with payments, search for 'payment')
-    - Displaying code elements to user
-    - Generating documentation;
-    - Automating code navigation.
-    </use-cases>
-    */
-    select_command: $ => seq(
-      'SELECT',
-      choice(
-        seq(field('file_names_paths_target', $.select_filenamespaths_target), 'FROM', $.multifile_clause),
-        seq(field('single_or_multifile_target', $.select_other_target), 'FROM', choice($.singlefile_clause, $.multifile_clause))
-      ),
-      optional($.where_clause),
-      optional($.limit_clause)
-    ),
+<dt>replace_region_clause: REPLACE <region_field></dt>
+<dd>Defines what region to be replaced</dd>
+<dd>Used as reference point for `relative indent level` only (*NOT* for context-relative line numbers)</dd>
 
-    select_filenamespaths_target: $ => SELECT_FILENAMESPATHS_TARGET,
-    select_other_target: $ => SELECT_OTHER_TARGETS,
+<dt>marker_or_segment: (<marker> | <segment>)</dt>
+<dd></dd>
+<dt>marker: (<lineMarker> | <identifierMarker>)</dt>
+<dd></dd>
+<dt>lineMarker: LINE ('''<string>''' | <context-relative-line-number> | REGEX r"<regex>" | PREFIX '''<string>''' | SUFFIX '''<string>''') [OFFSET <offset>]</dt>
+<dd>Points to specific line via:
+- its *contents*, if it's unambiguous (don't use line content if the line appears multiple times);
+- its *context-relative line number* (Must use this if other types failed;
+- a regular expression pattern (REGEX);
+- a string that matches from start of line (PREFIX);
+- a string that matches from end of line (SUFFIX);
+</dd>
+<dt>identifierMarker: (VARIABLE | FUNCTION | METHOD | CLASS) "[parent-chain.]<name>" [OFFSET <offset>]</dt>
+<dd>Name of an identifier</dd>
+<dd>If there are 2 or more with same name, prefixed it with its *parent chain* (names of its parents separated by a dot) to disambiguate it.
+Another way to disambiguate is to use `OFFSET <n>` to pinpoint one.
+</dd>
+<dt>parent-chain: string</dt>
+<dd>A *parent chain* is a dot-separated list of parents of <identifier> to help disambiguate it</dd>
+<dd>When a reference is ambiguous (multiple matches exist for it), it must be disambiguated. Parent chains are a way to do that</dd>
+<dd>Examples:
+- "name" (no parent chain, matches at any nesting level, including at the top level)
+- ".name" (only root in the chain, only matches "name" if it's at the top level of the file)
+- "C.name" (1 parent in the chain, matches "name" as long as "C" is a direct parent of it)
+- "B.C.name" (2 parents in the chain, requires "B" to be a direct parent of "C", and "C" a direct parent of "name")
+- ...
+</dd>
+<dt>offset: integer</dt>
+<dd>Determines how many matches to skip</dd>
+<dd>When a reference is ambiguous (multiple matches exist for it), it must be disambiguated. Setting an OFFSET is a way to do that</dd>
+<dd>Examples:
+OFFSET 0: skips 0 items (so, points to the *1st* match);
+OFFSET 1: skips 1 matches, so points to the *2nd* match;
+OFFSET 2: skips 2 matches, so points to the *3rd* match;
+OFFSET n: skips n matches, thus specifies the (n+1)-th match;
+</dd>
+<dt>segment: SEGMENT <relpos_segment_start> <relpos_segment_end></dt>
+<dd>Points to segment identified by a start and an end pointer</dd>
 
-    where_clause: $ => seq(
-      'WHERE',
-      field('condition', $.condition)
-    ),
+<dt>region_field: (BODY | WHOLE | <marker_or_segment>)</dt>
+<dt>WHOLE: keyword</dt>
+<dd>the whole chosen item</dd>
+<dt>BODY: keyword</dt>
+<dd>Only the function/method body (its *signature* is *NOT* considered)</dd>
+<dt>relpos_segment_start: STARTING (<relpos_at> | <relpos_beforeafter>)</dt>
+<dd></dd>
+<dt>relpos_segment_end: ENDING (<relpos_at> | <relpos_beforeafter>)</dt>
+<dd></dd>
+<dt>relpos_at: AT <marker></dt>
+<dd></dd>
+<dt>relpos_beforeafter: (BEFORE | AFTER) <marker></dt>
+<dd>Points to region immediately before or after <marker></dd>
+<dt>relpos_into: INTO <identifierMarker> (TOP | BOTTOM)</dt>
+<dd>Points to inside `identifierMarker` (either the body's TOP or BOTTOM region). The *horizontal reference point* is the body</dd>
+<dd>Use cases: When inserting content (e.g. a docstring or a return statement) either at the TOP or BOTTOM of a function or class body</dd>
+<dt>relpos_bai: (<relpos_beforeafter> | <relpos_into>)</dt>
+<dd></dd>
+<dt>relative_indentation: RELATIVE INDENTATION <relative-indent-level></dt>
+<dd>The reference point for the horizontal positioning of <relative_indentation> is the <marker> in (<insert_clause> | <replace_region_clause>)</dd>
 
-    conditions_left: $ => choice(
-      'NAME',
-      'PATH'
-    ),
-    operator: $ => choice('=', 'LIKE'),
-    condition: $ => seq($.conditions_left, $.operator, field('value_or_pattern', $.string)),
-
-    to_value_clause: $ => seq('TO', field('value', $.single_quoted_string)),
-    /**
-    Syntax: FILE "<path/to/file>"
-    Use cases: Specify a file
-    */
-    singlefile_clause: $ => seq('FILE', field('path', $.string)),
-    multifile_clause: $ => seq(
-      choice('PROJECT', seq('DIRECTORY', field('directory', $.single_quoted_string))),
-      optional($.maxdepth_clause)
-    ),
-
-    maxdepth_clause: $ => seq('MAX DEPTH', field('depth', $.number)),
-
-    // <specifying-locations-in-code>
-    /**
-    lineMarker: Points to specific line via:
-    - its *context-relative line number* (best method. Must use this if \
-    other types failed. Line counting starts at 1 which points to the line where the *definition* of the identifier starts.\
-    For functions/methods, it's where the signature starts);
-    - its *contents*, if it's unambiguous (don't use line content if the line appears multiple times);
-    - a string that matches from start of line (PREFIX);
-    - a string that matches from end of line (SUFFIX);
-    - a regular expression pattern (REGEX);
-    */
-    lineMarker: $ => seq('LINE', choice(
-      field('lineMarker', choice($.string, $.number)), // reference the line content or a context-relative line number
-      seq('REGEX', field('regexMarker', $.string)), // match line by REGEX
-      seq('PREFIX', field('prefixMarker', $.string)), // match line by its prefix
-      seq('SUFFIX', field('suffixMarker', $.string)) // match line by its suffix
-    ), optional($.offset_clause)),
-    /**
-    identifierMarker: Name of an identifier (variable, function, method or class).
-    If there are 2 or more with same name, prefixed it with its *parent chain* (names of its parents separated by a dot) to disambiguate it.
-    Another way to disambiguate is to use `OFFSET <n>` to pinpoint one.
-    Example of simple name and *parent chains*:
-    - "my_method" (just the name, if it's unique. Matches any method with that name, regardless of its parents)
-    - "MyClass.my_method" (matches any `my_method` that has `MyClass` as its direct parent. Also matches if `MyClass` itself has other parents)
-    */
-    identifierMarker: $ => seq(field('identifier', choice('VARIABLE', 'FUNCTION', 'METHOD', 'CLASS')), field('identifierMarker', $.string), optional($.offset_clause)),
-    marker: $ => choice($.lineMarker, $.identifierMarker),
-    /**
-    relpos_beforeafter: Points to region immediately before or after a `marker`
-    */
-    relpos_beforeafter: $ => field('relpos_beforeafter', seq(choice('BEFORE', 'AFTER'), $.marker)),
-    /**
-    relpos_inside: Points to inside `identifierMarker` (either the body's TOP or BOTTOM region). The reference indentation level is the body's.
-    Syntax: INSIDE (FUNCTION|CLASS) "<name>" [OFFSET <offset>] (TOP|BOTTOM)
-    Use cases: When inserting content either at the TOP or BOTTOM of a function or class body.
-    Examples: <ul>
-    <li>INSIDE FUNCTION my_function OFFSET 1 BOTTOM -- at the BOTTOM of the function body</li>
-    <li>INSIDE FUNCTION my_function TOP -- at the TOP of the function body</li>
-    </ul>
-    */
-    relpos_inside: $ => seq('INSIDE', field('inside', $.identifierMarker), field('topOrBottom', choice('TOP', 'BOTTOM'))),
-    relpos_bai: $ => field('relpos_bai', choice($.relpos_beforeafter, $.relpos_inside)),
-    /**
-    relpos_at: points to a specific `lineMarker`
-    */
-    relpos_at: $ => seq('AT', field('at', $.lineMarker)),
-    /**
-    relpos_segment_start: Points to start of segment
-    */
-    relpos_segment_start: $ => seq('STARTING', field('starting', choice($.relpos_at, $.relpos_beforeafter))),
-    /**
-    relpos_segment_end: Points to end of segment
-    */
-    relpos_segment_end: $ => seq('ENDING', field('ending', choice($.relpos_at, $.relpos_beforeafter))),
-    /**
-    segment: Points to segment identified by a start and an end pointer
-    */
-    segment: $ => field('segment', seq('SEGMENT', $.relpos_segment_start, $.relpos_segment_end)),
-    marker_or_segment: $ => field('mos', choice($.marker, $.segment)),
-    /** region_field:
-    - BODY_OR_WHOLE: pre-defined regions
-    - marker_or_segment: more flexible region selection
-    */
-    region_field: $ => field('region', choice(BODY_OR_WHOLE, $.marker_or_segment)),
-
-    /**
-    Field `offset`: Integer to identify how many matches to skip. *MANDATORY* iff there are 2 or more matching elements.
-    <examples>
-    <li>`OFFSET 0` is the default when there's only one matching element. It means to skip 0 items (so, points to the *1st* match).</li>
-    <li>`OFFSET 1` skips 1 matches, so points to the *2nd* matches</li>
-    <li>`OFFSET 2` skips 2 matches, so points to the *3rd* matches</li>
-    <li>`OFFSET n` skips n matches, thus specifies the (n+1)-th matches</li>
-    </examples>
-    */
-    offset_clause: $ => seq('OFFSET', field('offset', $.number)),
-
-    // </specifying-locations-in-code>
-
-    limit_clause: $ => seq('LIMIT', field('count', $.number)),
-
-    /**
-    relative_indentation: Helps maintain proper code structure when inserting or replacing code.
-    Sets the indentation *level* relative to the context specified in the command:
-    <li>`INSIDE (FUNCTION|METHOD|CLASS)`: Reference is the *body* of the identifier</li>
-    <li>`(BEFORE|AFTER) (LINE|FUNCTION|METHOD|CLASS)`: (regardless of whether BEFORE or AFTER is used)
-    For `LINE`, reference is itself;
-    For an identifier, reference is the first line where the function/method signature appears or the class definition starts
-    </li>
-    <li>`REPLACE LINE`: reference is itself;
-    </li>
-    <li>`REPLACE (FUNCTION|METHOD|CLASS)`: Reference is the first line where the function/method signature appears or the class definition starts
-    </li>
-    When `rel_indent` is 0, code is put at the *same level* as the reference.
-    */
-    relative_indentation: $ => seq('RELATIVE INDENTATION', field('rel_indent', $.number)),
-
-    content_from_segment: $ => seq(
-      optional($.singlefile_clause),
-      $.marker_or_segment,
-      optional($.relative_indentation)
-    ),
-
-    /**
-<details topic="Relative Indent Strings">
-<summary>A *relative* indent prefix is used for each line within strings in CONTENT blocks to simplify matching indentation with the existing code being changed</summary>
-<syntax>
-The patter is @N:line where:
-- `@N:` is the *RELATIVE* indent prefix;
-- `N` is an integer representing the relative indent *level* (can be negative) compared to the *reference point*;
-- `line` is the actual content for that line (comes immediately after prefix)
-</syntax>
-<prefix-examples>
-- `@0:` Same level as reference point                                                                                                                                   
-- `@1:` 1 more indent level than reference point                                                                                                                    
-- `@-1:` 1 less indent level than reference point</li>
-</prefix-examples>
-<reference-point>
-Some reference points:
-- AFTER/BEFORE LINE/FUNCTION/CLASS: The referenced item itself (rather than one line after or before it)
-- INSERT INSIDE (FUNCTION|METHOD|CLASS): The identifier's body
-- REPLACE LINE: the line itself
-- REPLACE (FUNCTION|METHOD|CLASS): the first line of the identifier's definition being replaced (not its body)
-- `BODY`: The body of the function/class being modified
-- `WHOLE`: The first line of the block where the function/class etc is defined (where its signature first apears)
-</reference-point>
-<key-points>
-The relative indent level *MUST* change logically with code structure:                                                                                                       
-- Increment N when entering a nested block (if/for/while/try etc...)                                                                                                     
-- Decrement N when exiting a nested block
-NOTE: If you get `E999 IndentationError` message or any other indentation error, check that your relative indent levels follow these rules.
-</key-points>
-<examples>
-<li>'@7:single-quote-string'</li>
-<li>"@-3:double-quote-string"</li>
-<li>r"@0:raw-string"</li>
-<li>'''
-@0:multi
-@-1:line
-'''</li>
-<li>\"\"\"
-@0:multi
-@-1:line
-\"\"\"</li>
-</examples>
-
-<example>
-[...] WITH CONTENT '''
+## Content Sources
+<dt>content_literal: CONTENT '''<relative-indent-level-string>'''</dt>
+<dd>Examples:</dd>
+<dd>CONTENT '''@0:return "x"'''</dd>
+<dd>CONTENT '''@-1:if a > 0:'''</dd>
+<dd>CONTENT '''
+@0:return "x"
+@-1:if a > 0:
+@0:b += 1
+'''</d>
+<dd>CONTENT \"\"\"
+@0:my_multiline_text = '''test
+@1:multi
+@1:line
+@0'''
+\"\"\"</dd>
+<dd>CONTENT '''
 @0:class myClass:
 @1:def myFunction(param):
 @2:if param > 0:
@@ -402,112 +184,72 @@ NOTE: If you get `E999 IndentationError` message or any other indentation error,
 @3:print("Non-positive")
 @2:return param * 2
 @0:class nextClass:
-'''
-</example>
+'''</dd>
+<dt>content_from_segment: [singlefile_clause] <marker_or_segment> [relative_indentation]</dt>
+<dd></dd>
+<dt>update_move_clause_destination: [TO FILE "<path>"] <insert_clause> [relative_indentation]</dt>
 
-Remember: The relative indentation prefix (@N:) is used to indicate the logical structure
-of the code. The CEDARScript interpreter will handle the actual formatting and indentation
-in the target code file.
-</details>
-    */
-    content_clause: $ => seq('CONTENT', field('content', $.string)),
+## Horizontal Positioning: Relative Indent Level
 
-    escape_sequence: $ => token(seq(
-      '\\\\',
-      choice(
-        /[abfnrtv\\\\"']/,
-        /\\d{1,3}/,
-        /x[0-9a-fA-F]{2}/,
-        /u[0-9a-fA-F]{4}/,
-        /U[0-9a-fA-F]{8}/,
-        /N\\{[^}]+\\}/
-      )
-    )),
+<dt>relative-indent-level-string: <relative-indent-prefix><line-1><newline>[<relative-indent-prefix><line-2><newline>]...</dt>
+<dd>(... denotes repetition)</dd>
+<dd>line-1, line-2 ... line-n is the actual content for each line</dd>
+<dd>MUST be used when providing CONTENT blocks. Simplifies matching indentation with the existing code being changed</dd>
+<dd>The CEDARScript runtime will handle the actual formatting and indentation in the target code file</dd>
+<dt>relative-indent-prefix: @<relative-indent-level>:</dt>
+<dt>relative-indent-level: integer</dt>
+<dd>Determines *horizontal positioning* as a *relative* indent *level* compared to the *horizontal positioning reference point* \
+(the reference point is the <marker> chosen for the <update-action> (MOVE|INSERT|REPLACE))</dd>
+<dd>The relative indent level *MUST* change logically with code structure:
+- Increment when entering a nested block (if/for/while/try etc...);
+- Decrement when exiting a nested block;
+</dd>
+<dd>Examples:
+0: *Same* level as reference point;
+1: one more indent level than reference point;
+-1: one *less* indent level than reference point;
+</dd>
+<dd>NOTE: If you get `E999 IndentationError` message or any other indentation error, check that your relative indent levels \
+follow these rules</dd>
 
-    string: $ => choice(
-      $.raw_string,
-      $.single_quoted_string,
-      $.multi_line_string
-    ),
-    raw_string: $ => choice(
-      seq(
-        'r"',
-        repeat(/./),
-        '"'
-      ),
-      seq(
-        "r'",
-        repeat(/./),
-        "'"
-      ),
-      seq(
-        'r\"\"\"',
-        repeat(/./),
-        '\"\"\"'
-      ),
-      seq(
-        "r'''",
-        repeat(/./),
-        "'''"
-      )
-    ),
-    single_quoted_string: $ => choice(
-      seq(
-        "'",
-        repeat(choice(
-          /[^'\\\\\\n]/,
-          $.escape_sequence
-        )),
-        "'"
-      ),
-      seq(
-        '"',
-        repeat(choice(
-          /[^"\\\\\\n]/,
-          $.escape_sequence
-        )),
-        '"'
-      )
-    ),
-    /**
-    multi_line_string: Also useful to avoid escaping quotes
-    */
-    multi_line_string: $ => choice(
-      seq(
-        '\"\"\"',
-        repeat(choice(
-          /[^"\\\\]/,
-          '"',
-          '""',
-          $.escape_sequence
-        )),
-        '\"\"\"'
-      ),
-      seq(
-        "'''",
-        repeat(choice(
-          /[^'\\\\]/,
-          "'",
-          "''",
-          $.escape_sequence
-        )),
-        "'''"
-      )
-    ),
+## Vertical Positioning: Context-Relative Line Numbers
+<dt>context-relative-line-number: integer</dt>
+<dd>Determines *vertical positioning*. Represents the relative line number compared to the *vertical positioning reference point* \
+(the reference point is the target chosen for the <update-target> - either the file itself or a specific <identifierMarker> in it)</dd>
+<dd>Number 1 points to the *first* line of its reference point; 2 points to the second, ...</dd>
+<dd>Number 0 points to the line that comes *BEFORE* its reference point; -1 points to 2 lines before, ...</dd>
 
-    number: $ => /\\d+/,
+</dl>
+</syntax-detailed>
 
-    comment: $ => token(seq('--', /.*/)),
+</DML>
+<DDL>
+CREATE FILE "<path>" WITH <content_literal>;
+RM FILE "<path>";
+MV FILE "<source>" TO "<target>";
+</DDL>
+</core-commands>
 
-    command_separator: $ => ';'
+## Explainers
+TODO
 
-  }
-});
-</grammar.js>
+## Cookbook
+TODO
+
 """
 
 #  TODO
-    #   + When presented with a code change task:
+
+# To replace 'failUnlessEqual' with 'assertEqual' using Comby notation:
+# ```CEDARScript
+# UPDATE PROJECT
+# REAFCTOR LANGUAGE "comby"
+# WITH PATTERN '''
+# comby 'failUnlessEqual(:[a],:[b])' 'assertEqual(:[a],:[b])' example.py
+# '''
+# ```
+
+#   + When presented with a code change task:
     #  +
     #  + 1. Analysis Phase:
     #  +    a. Carefully read and understand the requested changes
@@ -559,7 +301,37 @@ in the target code file.
     #  + - Keep commands as concise as possible
     #  + </li>
 
-    # Appears twice (as SYSTEM and as USER):
+# When using REPLACE LINE n, there are TWO different reference points:
+#
+# 1 For line numbering: The method/function/class being referenced (in this case, method decode) is used to determine which line we're replacing
+# 2 For relative indentation (@N:): The line being replaced (line 2) is the reference point for indentation
+#
+# <relative-indent-reference-points>
+# # Reference point for relative indentation (@N:) depends on the command type:
+#
+# 1. For `REPLACE LINE n`:
+# - Reference is the line being replaced (NOT the identifier containing it)
+# - Example: If replacing line 2 of method foo(), and that line is indented 2 levels,
+# use @0: to keep same level as that line
+#
+# 2. For `INTO (FUNCTION|METHOD|CLASS) ... (TOP|BOTTOM)`:
+# - Reference is the body of the identifier
+# - Example: If inserting at TOP of method body that's indented 1 level,
+# use @0: to match body's indent level
+#
+# 3. For `(BEFORE|AFTER) (LINE|FUNCTION|METHOD|CLASS)`:
+# - Reference is the item itself (not one line before/after)
+# - Example: If inserting after a method definition indented 1 level,
+# use @0: to match that method's indent level
+#
+# 4. For `REPLACE (FUNCTION|METHOD|CLASS)`:
+# - Reference is where the identifier's definition starts
+# - Example: If replacing a method indented 1 level,
+# use @0: to match method's indent level, @1: for its body
+# </relative-indent-reference-points>
+
+
+# Appears twice (as SYSTEM and as USER):
     system_reminder = """When presented with a code change task:
 <action>
 <step>Identify the files to be updated</step>
@@ -573,53 +345,30 @@ Super careful to avoid syntax errors.</step>
 <li>Pay attention to which filenames the user wants you to edit, especially if they are asking you to create a new file</li>
 <li>Use the exact file path for the file that needs to be changed (remember you can only change files that the user added to the chat!)</li>
 <li>Even when being concise, don't use `/dev/stdin` unless user provided a literal source code block directly in message</li>
-<li>Each CEDARScript command is applied in the same order as they appear. If a command fails to be applied, all commands before it were correctly applied (don't retry those!). Once a command is applied on a file, the next command will see the update version of that file, with all changes that were applied by earlier commands.</li>
-<li>It's crucial to strive to provide *as concise and small as possible*, targeted CEDARScript commands that each change a given aspect of the program, so that humans can easily understand what's changing</li>
+<li>Each CEDARScript command is applied in the same order as they appear. If a command fails to be applied, all commands \
+before it were correctly applied (don't retry those!). Once a command is applied on a file, the next command will see \
+the update version of that file, with all changes that were applied by earlier commands.</li>
+<li>It's crucial to strive to provide *as concise and small as possible*, targeted CEDARScript commands that each \
+change a given aspect of the program, so that humans can easily understand what's changing</li>
 <li>Try *HARD* to minimize the number of unchanged lines in a CEDARScript command and to have a very *concise* script</li>
-<li>To move code within a file or identifier (class, method or function), you *MUST* use the `UPDATE ... MOVE ...` construct to minimize script size (DON'T use `WITH CONTENT`)
+<li>To move code within a file or identifier (class, method or function), you *MUST* use the `UPDATE ... MOVE ...` construct \
+to minimize script size (DON'T use `WITH CONTENT`)
 <IMPORTANT>
 1. You wmust try the alternative form `UPDATE CLASS..MOVE FUNCTION` (instead of `UPDATE FUNCTION..MOVE WHOLE`) if the latter fails
 2. If there are MULTIPLE identifiers with the same name, you *MUST* choose an appropriate reference that is unambiguous! 
 </IMPORTANT>
 </li>
-<li>Prefer using multiline_string (enclosed in ''') even for single line content</li>
-<li>For `CONTENT` blocks, ALWAYS use `relative indent prefix` (which is the @N: part) for each line, where N is RELATIVE to the reference point specified in the command.
+<li>For `CONTENT` blocks, ALWAYS use `relative indent prefix` (which is the @N: part) for each line, where N is RELATIVE \
+to the reference point specified in the `DELETE|MOVE|INSERT|REPLACE` clause (*not* the `identifier_from_file` clause).
 The actual indentation characters (spaces or tabs) will be applied by the CEDARScript engine.
-<CRUCIAL>
-If you get `E999 IndentationError` message or any other indentation error, check that your relative indent levels follow these rules.
-Examples of correct usage of `@N:` below:
-<example>
-<raw>
-class A:
-    def m1(self):
-        pass
-    def m2(self):
-        if 1 > 1:
-            pass
-        pass
-class B
-</raw>
-<relative-indent-block>'''
-@0:class A:
-@1:def m1(self):
-@2:pass
-@1:def m2(self):
-@2:if 1 > 1:
-@3:pass
-@2:pass
-@0:class B
-'''</relative-indent-block>
-</example>
-</CRUCIAL>
 </li>
 <li>Selecting Reference Points for Code Locations:
 When choosing lines/elements to reference in commands:
 1. Uniqueness Rule: *NEVER* reference an ambiguous line/identifier (that is, appearing multiple times);
 Check if your chosen reference appears multiple times in the file.
 To disambiguate a line:
-  - Use a *context-relative line number* (it's relative to an identifier and ALWAYS unique. Starts at 1, corresponding \
- to the first line of the *definition* for the identifier, not its body), or
-  - Find a unique alternative nearby.
+  - Find a unique alternative nearby (preferred).
+  - Use a *context-relative line number*
 To disambiguate an identifier:
   - Use the *parent chain*: prepend one or more parent names to the identifier name, as in `MyClass.MyOtherClass.my_method`
 </li>
@@ -681,8 +430,8 @@ Add docstring to the function
             content="""
 {fence[0]}CEDARScript
 UPDATE FILE "/dev/stdin"
-INSERT INSIDE FUNCTION "calculate_sum" TOP -- Using `INSIDE FUNCTION .. TOP` is the *BEST* option to point to add content to the top of the body.
--- The CONTENT below uses the body (the `INSIDE`) of the function as indent level reference
+INSERT INTO FUNCTION "calculate_sum" TOP -- Using `INTO FUNCTION .. TOP` is the *BEST* option to point to add content to the top of the body.
+-- The CONTENT below uses the body (the `INTO`) of the function as indent level reference
 WITH CONTENT '''
 @0:\"\"\"Calculate sum of two numbers.
 @0:
@@ -708,7 +457,7 @@ def something():
 def calculate_sum(a, b):
     return a + b
 '''
-Add docstring to the function calculate_sum (but don't use `INSIDE FUNCTION`, as I want to see alternatives)
+Add docstring to the function calculate_sum (but don't use `INTO FUNCTION`, as I want to see alternatives)
             """
         ),
         dict(
@@ -747,7 +496,7 @@ def something():
 def calculate_sum(a, b):
     return a + b
 '''
-Add docstring to the function calculate_sum (but don't use `INSIDE FUNCTION` nor `LINE 1`, as I want to see alternatives)
+Add docstring to the function calculate_sum (but don't use `INTO FUNCTION` nor `LINE 1`, as I want to see alternatives)
             """
         ),
         dict(
@@ -796,7 +545,7 @@ Let's use the `parent chain` to easily disambiguate it:
 
 {fence[0]}CEDARScript
 UPDATE FILE "/dev/stdin"
-INSERT INSIDE FUNCTION "b.calculate_sum" TOP -- the function to be modified has `b` as its direct parent
+INSERT INTO FUNCTION "b.calculate_sum" TOP -- the function to be modified has `b` as its direct parent
 WITH CONTENT '''
 @0:\"\"\"Calculate sum of two numbers.
 @0:
@@ -834,7 +583,7 @@ but in this particular case we don't require it.
 {fence[0]}CEDARScript
 UPDATE CLASS "B"
 FROM FILE "/dev/stdin"
-INSERT INSIDE METHOD "calculate_sum" TOP -- matches the method at any level of nesting inside class `B`
+INSERT INTO METHOD "calculate_sum" TOP -- matches the method at any level of nesting inside class `B`
 WITH CONTENT '''
 @0:\"\"\"Calculate sum of two numbers.
 @0:
@@ -1117,7 +866,7 @@ WITH CONTENT '''
 -- 3. Insert a call to the `print_with_prefix()` method at the top of the last method (`greet`);
 UPDATE CLASS "Greeter" -- As method `greet` exists in more than 1 class, we specify which one we want to reference
   FROM FILE "/dev/stdin"
-INSERT INSIDE METHOD "greet" TOP -- at the TOP of the function body
+INSERT INTO METHOD "greet" TOP -- at the TOP of the function body
 -- The function body is the reference indent level; `@0:` means to use that same level 
 WITH CONTENT '''
 @0:print_with_prefix('Hi, ', name)
@@ -1126,7 +875,7 @@ WITH CONTENT '''
 -- 4. Insert code at the bottom of the `greet()` method to increment the greeting count and print it.
 UPDATE CLASS "Greeter" -- As method `greet` exists in more than 1 class, we specify which one we want to reference
   FROM FILE "/dev/stdin"
-INSERT INSIDE METHOD "greet" BOTTOM -- at the BOTTOM of the function body
+INSERT INTO METHOD "greet" BOTTOM -- at the BOTTOM of the function body
 -- The function body is the reference indent level; `@0:` means to use that same level 
 WITH CONTENT '''
 @0:self.greeting_count += 1
@@ -1136,7 +885,7 @@ WITH CONTENT '''
 
 Notes to self:
 1. As the code to be changed was provided in the message, we're using file name "/dev/stdin".
-2. When using `INSIDE`, the body of the function or class is implicit, so we can NEVER write `BODY` after `INSIDE`.
+2. When using `INTO`, the body of the function or class is implicit, so we can NEVER write `BODY` after `INTO`.
 """,
         ),
         dict(
@@ -1408,7 +1157,7 @@ Here's the CEDARScript script:
 {fence[0]}CEDARScript
 -- 1. Move the `_candidate()` method from the `A` class, placing it at the top level, just before the line where its class starts
 UPDATE FILE "/dev/stdin"
-MOVE METHOD "_candidate" -- As method `_candidate` only exists in one place, it's unambiguous, so we ought to directly reference it (by using `UPDATE FUNCTION..MOVE WHOLE`).
+MOVE METHOD "_candidate" -- As method `_candidate` only exists in one place, it's unambiguous, so we ought to directly reference it
 INSERT BEFORE CLASS "A"
   RELATIVE INDENTATION 0;
 
