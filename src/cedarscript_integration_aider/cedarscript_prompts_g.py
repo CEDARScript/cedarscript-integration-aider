@@ -11,7 +11,8 @@ class CEDARScriptPromptsGrammar(CEDARScriptPromptsBase):
     final_remarks = CEDARScriptPromptsBase.final_remarks_brain
 
     edit_format_training = """## CEDARScript Quick Reference Guide
-It's a *SQL-like* language used to express code manipulations (via DDL and DML Write commands) and to help an LLM examine and understand the codebase (via DML Read-Only command).
+It's a *SQL-like* language used to express code transformations (via DDL and DML Write commands) and to \
+help an LLM examine and understand the codebase (via DML Read-Only command).
 <core-commands>
 <DML>
 # Read-only command
@@ -55,10 +56,11 @@ first line where the identifier is declared (function signature, etc)
 <dd>Sets *reference point* for *horizontal positioning* (Relative Indent Level)</dd>
 <dd>The reference point is the term chosen for the (MOVE|INSERT|REPLACE) action</dd>
 
-<dt>contents: (<content_literal> | <content_from_segment>)</dt>
+<dt>contents: (<content_literal> | <content_from_segment> | <case_stmt> )</dt>
 <dd>Optional specification of new content:
-- content_literal: direct text using <relative-indent-level-string>
-- content_from_segment: content taken from existing code
+- <content_literal>: direct text using <relative-indent-level-string>
+- <content_from_segment>: content taken from existing code
+- <case_stmt>: can only be used in conjunction with <replace_region_clause>, as it filters a region through it
 </dd>
 
 <dt>action-mos   : ( <update_delete_region_clause> | MOVE <marker_or_segment> <update_move_clause_destination> | <insert_clause> | <replace_region_clause> )</dt>
@@ -121,7 +123,7 @@ Another way to disambiguate is to use `OFFSET <n>` to pinpoint one.
 <dd>When a reference is ambiguous (multiple matches exist for it), it must be disambiguated. Parent chains are a way to do that</dd>
 <dd>Examples:
 - "name" (no parent chain, matches at any nesting level, including at the top level)
-- ".name" (only root in the chain, only matches "name" if it's at the top level of the file)
+- ".name" (only root in the chain (so it's anchored), only matches "name" if it's at the top level of the file)
 - "C.name" (1 parent in the chain, matches "name" as long as "C" is a direct parent of it)
 - "B.C.name" (2 parents in the chain, requires "B" to be a direct parent of "C", and "C" a direct parent of "name")
 - ...
@@ -187,6 +189,22 @@ OFFSET n: skips n matches, thus specifies the (n+1)-th match;
 '''</dd>
 <dt>content_from_segment: [singlefile_clause] <marker_or_segment> [relative_indentation]</dt>
 <dd></dd>
+
+<dt>case_stmt: CASE WHEN (EMPTY | REGEX r"<string>" | PREFIX "<string>" | SUFFIX "<string>" | INDENT LEVEL <integer> | LINE NUMBER <integer> ) \
+THEN (CONTINUE | REMOVE | REPLACE r"<string>" | INDENT <integer> | <content_literal> | <content_from_segment>)</dt>
+<dd>Only used in conjunction with <replace_region_clause>. Filters each line of the region according to WHEN/THEN pairs:</dd>
+<dd>EMPTY: Matches an empty line</dd>
+<dd>PREFIX: Matches by line prefix</dd>
+<dd>SUFFIX: Matches by line suffix</dd>
+<dd>INDENT LEVEL: Matches lines with specific indent level</dd>
+<dd>LINE NUMBER: Matches by line number</dd>
+<dd>CONTINUE: Leaves the line as is and goes to the next</dd>
+<dd>REMOVE: Removes the line</dd>
+<dd>REPLACE: Replace with regex capture groups (\\1, \\2, etc)</dd>
+<dd>INDENT: Increases or decreases indent level. Only positive or negative integers</dd>
+
+<dt>
+
 <dt>update_move_clause_destination: [TO FILE "<path>"] <insert_clause> [relative_indentation]</dt>
 
 ## Horizontal Positioning: Relative Indent Level
@@ -230,11 +248,186 @@ MV FILE "<source>" TO "<target>";
 </DDL>
 </core-commands>
 
-## Explainers
-TODO
-
 ## Cookbook
-TODO
+
+<codebase>
+```a1.py
+def a_def1(
+    a,
+    b
+):
+    return a + b
+
+def a():
+    def a_def2(a, b):
+        return a + b
+def b():
+    def a_def2(a, b):
+        return a + b
+def a_def2():
+    return "x"
+```
+
+```a2.py
+class A:
+    def a(self, a1):
+        c, d = self.b(a1x)
+        if a1 > 0:
+            c = "x" + a1
+        return 1,2
+    def b(self, a1):
+        c, d = self.b(a1x)
+        if a1 > 0:
+            c = "x" + a1
+        return 1,2
+```
+
+```a3.py
+class MyClass(NamedTuple):
+    def __init__(self):
+        instance_var_1: str = '4r3'
+    def myFirstFunction(
+        self, name: str,
+        age: int
+    ):
+        if age > 70
+            a = doSomething(name, age)
+        return a + 5 + len(self.instance_var_1) * 7
+    def middle(self):
+        pass
+    def anotherFunction(self, name: str, age: int):
+        b = checkVal(45, "strict", self.myFirstFunction(name, age), 8, "tops")
+        bb = checkVal(7, "lax", self.myFirstFunction(name, age), 2, "bottom")
+        c = "x" + '"' + "'" + "z"
+        print("calc d...")
+        d = checkVal(45, "strict", self.myFirstFunction(name, age), 8, "tops")
+        print("calc dd...")
+        print("takes longer...")
+        dd = checkVal(4455, "aasdf", '33se"asd',
+          "strict", 8, 
+          "tops", "xx",
+          '9"f', "as'df", self.myFirstFunction(name, age))
+        return b * 3
+```
+</codebase>
+
+Consider the files in the codebase above and see the examples below.
+
+<dl note="each 'dd' item gets a fresh copy of the codebase files">
+<dt file="a1.py">Add Docstring to a Python function/method/body</dt>
+<dd>
+-- Using `INTO .. TOP` is the *BEST* option to add content to the top of the body
+UPDATE FILE "a1.py"
+INSERT INTO FUNCTION "a_def1" TOP -- the *reference point* for horizontal positioning is a_def1's body
+WITH CONTENT '''
+@0:\"\"\"Calculate sum of two numbers.
+@0:
+@0:Args:
+@1:a: First number
+@1:b: Second number
+@0:
+@0:Returns:
+@1:Sum of a and b
+@0:\"\"\"
+''';
+</dd>
+<dd>
+-- We can also use `(AFTER|BEFORE) `LINE '''<string>'''`, which is still an excellent choice for this case.
+-- Note: As the *reference point* for horizontal positioning is now line "):" instead of the body,
+--   we need to use different values for the relative indent levels.
+UPDATE FUNCTION "a_def1"
+FROM FILE "a1.py"
+INSERT AFTER LINE '''):'''
+-- The CONTENT below uses line "):" (*not* the line after it) as reference point for horizontal positioning
+WITH CONTENT '''
+@1:\"\"\"Calculate sum of two numbers.
+@1:
+@1:Args:
+@2:a: First number
+@2:b: Second number
+@1:
+@1:Returns:
+@2:Sum of a and b
+@1:\"\"\"
+''';
+</dd>
+
+<dt file="a1.py">Disambiguate using parent chains</dt>
+<dd>We cannot simply use `FUNCTION "a_def2"`, as it matches all 3 functions with that name. \
+We should use the `parent chain` to easily disambiguate it:</dd>
+<dd>
+-- Target the top-level a_def2
+UPDATE FILE "a1.py"
+INSERT INTO FUNCTION ".a_def2" TOP -- starting the parent chain with a dot means we're anchoring the root (top level).
+WITH CONTENT '''
+@0:\"\"\"Returns a value\"\"\"
+''';
+</dd>
+<dd>
+-- Target a_def2 inside 'a'
+UPDATE FILE "a1.py"
+INSERT INTO FUNCTION "a.a_def2" TOP -- matches if a_def2 has 'a' as its immediate parent
+WITH CONTENT '''
+@0:\"\"\"Returns a value\"\"\"
+''';
+</dd>
+
+<dt file="a1.py">Disambiguate by setting the <update-target> to a specific <identifierMarker></dt>
+<dd>
+-- Set the update target to "a". Notice "a_def1" is unambiguous inside "a"
+UPDATE FUNCTION "a"
+FROM FILE "a1.py"
+INSERT INTO FUNCTION "a_def1" TOP -- matches the function at any level of nesting *inside* the update target
+WITH CONTENT '''
+@0:\"\"\"Returns a value\"\"\"
+''';
+</dd>
+
+<dt file="a2.py">Replace two occurrences of a line</dt>
+<dd>Replace references to 'a1x' with 'a1' in 2 lines</dd>
+<dd>
+UPDATE METHOD "a"
+  FROM FILE "a2.py"
+REPLACE LINE '''c, d = self.b(a1x)'''
+WITH CONTENT '''
+@0:c, d = self.b(a1)
+''';
+UPDATE METHOD "b"
+FROM FILE "a2.py"
+REPLACE LINE '''c, d = self.b(a1x)'''
+WITH CONTENT '''
+@0:c, d = self.b(a1)
+''';
+</dd>
+
+<dt file="a3.py">Refactor a method into a stand-alone, top level function</dt>
+<dd>Let's choose method `myFirstFunction` for our example</dd>
+<dd>
+-- 1. Move the `myFirstFunction()` method from the `MyClass` class, placing it at the top level, just before the line where its class starts.
+UPDATE FILE "a3.py"
+MOVE METHOD "myFirstFunction"
+INSERT BEFORE CLASS "MyClass"
+  RELATIVE INDENTATION 0; -- the function being moved will start at the same indentation as the class `MyClass`
+
+-- 2. Update the copied function to remove references to `self`, now declaring `instance_var_1` as parameter
+UPDATE FUNCTION "myFirstFunction"
+  FROM FILE "a3.py"
+REPLACE WHOLE
+WITH CASE
+  WHEN REGEX r'self,' THEN REPLACE r'instance_var_1: str,'
+  WHEN REGEX r'self\\.(instance_var_1)' THEN REPLACE r'\\1'
+END;
+
+-- 3. Update ALL call sites of the method `myFirstFunction` to call the new top-level function with the same name, passing `instance_var_1` as argument
+UPDATE FUNCTION "anotherFunction"
+  FROM FILE "a3.py"
+REPLACE BODY
+WITH CASE
+  WHEN REGEX r'self.(myFirstFunction)\\(' THEN REPLACE r'\\1(instance_var_1, '
+END;
+</dd>
+
+</dl>
 
 """
 
@@ -301,35 +494,6 @@ TODO
     #  + - Keep commands as concise as possible
     #  + </li>
 
-# When using REPLACE LINE n, there are TWO different reference points:
-#
-# 1 For line numbering: The method/function/class being referenced (in this case, method decode) is used to determine which line we're replacing
-# 2 For relative indentation (@N:): The line being replaced (line 2) is the reference point for indentation
-#
-# <relative-indent-reference-points>
-# # Reference point for relative indentation (@N:) depends on the command type:
-#
-# 1. For `REPLACE LINE n`:
-# - Reference is the line being replaced (NOT the identifier containing it)
-# - Example: If replacing line 2 of method foo(), and that line is indented 2 levels,
-# use @0: to keep same level as that line
-#
-# 2. For `INTO (FUNCTION|METHOD|CLASS) ... (TOP|BOTTOM)`:
-# - Reference is the body of the identifier
-# - Example: If inserting at TOP of method body that's indented 1 level,
-# use @0: to match body's indent level
-#
-# 3. For `(BEFORE|AFTER) (LINE|FUNCTION|METHOD|CLASS)`:
-# - Reference is the item itself (not one line before/after)
-# - Example: If inserting after a method definition indented 1 level,
-# use @0: to match that method's indent level
-#
-# 4. For `REPLACE (FUNCTION|METHOD|CLASS)`:
-# - Reference is where the identifier's definition starts
-# - Example: If replacing a method indented 1 level,
-# use @0: to match method's indent level, @1: for its body
-# </relative-indent-reference-points>
-
 
 # Appears twice (as SYSTEM and as USER):
     system_reminder = """When presented with a code change task:
@@ -340,29 +504,23 @@ Super careful to avoid syntax errors.</step>
 <step>If your script fails, carefully analyze the error details inside tag <error-details> and tell me how you can overcome the problem, then try harder to get it right.
 </step>
 </action>
-<important>
-<ul>
-<li>Pay attention to which filenames the user wants you to edit, especially if they are asking you to create a new file</li>
-<li>Use the exact file path for the file that needs to be changed (remember you can only change files that the user added to the chat!)</li>
-<li>Even when being concise, don't use `/dev/stdin` unless user provided a literal source code block directly in message</li>
-<li>Each CEDARScript command is applied in the same order as they appear. If a command fails to be applied, all commands \
+
+- Pay attention to which filenames the user wants you to edit, especially if they are asking you to create a new file;
+- Use the exact file path for the file that needs to be changed (remember you can only change files that the user added to the chat!);
+- Even when being concise, don't use `/dev/stdin` unless user provided a literal source code block directly in message;
+- Each CEDARScript command is applied in the same order as they appear. If a command fails to be applied, all commands \
 before it were correctly applied (don't retry those!). Once a command is applied on a file, the next command will see \
-the update version of that file, with all changes that were applied by earlier commands.</li>
-<li>It's crucial to strive to provide *as concise and small as possible*, targeted CEDARScript commands that each \
-change a given aspect of the program, so that humans can easily understand what's changing</li>
-<li>Try *HARD* to minimize the number of unchanged lines in a CEDARScript command and to have a very *concise* script</li>
-<li>To move code within a file or identifier (class, method or function), you *MUST* use the `UPDATE ... MOVE ...` construct \
-to minimize script size (DON'T use `WITH CONTENT`)
+the update version of that file, with all changes that were applied by earlier commands;
+- It's crucial to strive to provide *as concise and small as possible*, targeted CEDARScript commands that each \
+change a given aspect of the program, so that humans can easily understand what's changing;
+- Try *HARD* to minimize the number of unchanged lines in a CEDARScript command and to have a very *concise* script;
+- To move code within a file or identifier (class, method or function), you *MUST* use the `UPDATE ... MOVE ...` construct \
+to minimize script size (DON'T use `WITH CONTENT`);
 <IMPORTANT>
 1. You wmust try the alternative form `UPDATE CLASS..MOVE FUNCTION` (instead of `UPDATE FUNCTION..MOVE WHOLE`) if the latter fails
 2. If there are MULTIPLE identifiers with the same name, you *MUST* choose an appropriate reference that is unambiguous! 
 </IMPORTANT>
-</li>
-<li>For `CONTENT` blocks, ALWAYS use `relative indent prefix` (which is the @N: part) for each line, where N is RELATIVE \
-to the reference point specified in the `DELETE|MOVE|INSERT|REPLACE` clause (*not* the `identifier_from_file` clause).
-The actual indentation characters (spaces or tabs) will be applied by the CEDARScript engine.
-</li>
-<li>Selecting Reference Points for Code Locations:
+<p>Selecting Reference Points for Code Locations:
 When choosing lines/elements to reference in commands:
 1. Uniqueness Rule: *NEVER* reference an ambiguous line/identifier (that is, appearing multiple times);
 Check if your chosen reference appears multiple times in the file.
@@ -371,8 +529,8 @@ To disambiguate a line:
   - Use a *context-relative line number*
 To disambiguate an identifier:
   - Use the *parent chain*: prepend one or more parent names to the identifier name, as in `MyClass.MyOtherClass.my_method`
-</li>
-<li>Common mistakes:
+</p>
+<common-mistakes>
 <context-relative-line-numbers>
 Incorrect: Start counting at the function/method's body
 Correct: Start counting at the first line where the function/method's signature appears.
@@ -401,8 +559,7 @@ Correct: Start counting at the first line where the function/method's signature 
 - Incorrect (without a preceding \\ for each backtick): `WITH CONTENT '''Bash: ``` rm *.py ```''';`
 - Correct (ever single backtick is preceded by a "\\"): `WITH CONTENT '''Bash: \\`\\`\\` rm *.py \\`\\`\\`''';`
 </triple-backtick>
-</li>
-</ul>
+</common-mistakes>
 
 {lazy_prompt}
 ONLY EVER RETURN CODE IN *CEDARScript block*!
@@ -415,322 +572,6 @@ You MUST write <NOCEDARSCRIPT/> as the last line if:
 """
 
     example_messages = CEDARScriptPromptsBase.example_messages + [
-        dict(
-            role="user",
-            content="""
-'''python
-def calculate_sum(a, b):
-    return a + b
-'''
-Add docstring to the function
-            """
-        ),
-        dict(
-            role="assistant",
-            content="""
-{fence[0]}CEDARScript
-UPDATE FILE "/dev/stdin"
-INSERT INTO FUNCTION "calculate_sum" TOP -- Using `INTO FUNCTION .. TOP` is the *BEST* option to point to add content to the top of the body.
--- The CONTENT below uses the body (the `INTO`) of the function as indent level reference
-WITH CONTENT '''
-@0:\"\"\"Calculate sum of two numbers.
-@0:
-@0:Args:
-@1:a: First number
-@1:b: Second number
-@0:
-@0:Returns:
-@1:Sum of a and b
-\"\"\"
-''';
-{fence[1]}
-""",
-        ),
-        dict(
-            role="user",
-            content="""
-'''python
-def something():
-    pass
-
-
-def calculate_sum(a, b):
-    return a + b
-'''
-Add docstring to the function calculate_sum (but don't use `INTO FUNCTION`, as I want to see alternatives)
-            """
-        ),
-        dict(
-            role="assistant",
-            content="""Alas! That would've been the best command for that, but we do have alternatives. \
-Let's use *context-relative line numbers*, which is still an excellent choice.
-Note: As the indent level reference is now the function definition instead of its body, we also need to increment by 1 all relative indents.
-
-{fence[0]}CEDARScript
-UPDATE FUNCTION "calculate_sum" -- this is the contex for line numbers. Line counting starts 
-FROM FILE "/dev/stdin"
-INSERT AFTER LINE 1 -- This is the context-relative line number. Line 1 is where the definition for the identifier `calculate_sum` starts 
--- The CONTENT below uses `LINE 1` (*not* the line after it) as indent level reference
-WITH CONTENT '''
-@1:\"\"\"Calculate sum of two numbers.
-@1:
-@1:Args:
-@2:a: First number
-@2:b: Second number
-@1:
-@1:Returns:
-@2:Sum of a and b
-\"\"\"
-''';
-{fence[1]}
-""",
-        ),
-        dict(
-            role="user",
-            content="""
-'''python
-def something():
-    pass
-
-
-def calculate_sum(a, b):
-    return a + b
-'''
-Add docstring to the function calculate_sum (but don't use `INTO FUNCTION` nor `LINE 1`, as I want to see alternatives)
-            """
-        ),
-        dict(
-            role="assistant",
-            content="""We still have many options! The next best one would be to use `BEFORE LINE 2` \
-(which points exactly to the same location as `AFTER LINE 1`, albeit with a different relative indent level):
-
-{fence[0]}CEDARScript
-UPDATE FUNCTION "calculate_sum" -- this is the contex for line numbering
-FROM FILE "/dev/stdin"
-INSERT BEFORE LINE 2 -- This is the context-relative line number. Line 2 is where the *body* starts (it's `return a + b`)
--- The CONTENT below uses `LINE 2` (*not* the line before it) as indent level reference
-WITH CONTENT '''
-@0:\"\"\"Calculate sum of two numbers.
-@0:
-@0:Args:
-@1:a: First number
-@1:b: Second number
-@0:
-@0:Returns:
-@1:Sum of a and b
-\"\"\"
-''';
-{fence[1]}
-""",
-        ),
-        dict(
-            role="user",
-            content="""
-'''python
-def a():
-    def calculate_sum(a, b):
-        return a + b
-def b():
-    def calculate_sum(a, b):
-        return a + b
-'''
-Add docstring to the function calculate_sum nested inside b. \
-Briefly explain your selection of reference points for code locations.
-            """
-        ),
-        dict(
-            role="assistant",
-            content="""We cannot simply use `FUNCTION "calculate_sum"`, as its name appears multiple times in the provided script. \
-Let's use the `parent chain` to easily disambiguate it:
-
-{fence[0]}CEDARScript
-UPDATE FILE "/dev/stdin"
-INSERT INTO FUNCTION "b.calculate_sum" TOP -- the function to be modified has `b` as its direct parent
-WITH CONTENT '''
-@0:\"\"\"Calculate sum of two numbers.
-@0:
-@0:Args:
-@1:a: First number
-@1:b: Second number
-@0:
-@0:Returns:
-@1:Sum of a and b
-\"\"\"
-''';
-{fence[1]}
-""",
-        ),
-        dict(
-            role="user",
-            content="""
-'''python
-class A:
-    def calculate_sum(self, a, b):
-        return a + b
-class B:
-    def calculate_sum(self, a, b):
-        return a + b
-'''
-Add docstring to the method in class B. Don't use `parent chain`, as I want to see alternatives.
-            """
-        ),
-        dict(
-            role="assistant",
-            content="""We can also use `UPDATE CLASS "B"` as a way to disambiguate the method: it will match any \
-level of nesting for the method, but since the method is unique inside class `B`, we can still use it.
-The parent chain "B.calculate_sum" is more precise (matches the method having class `B` as its direct parent),
-but in this particular case we don't require it.
-{fence[0]}CEDARScript
-UPDATE CLASS "B"
-FROM FILE "/dev/stdin"
-INSERT INTO METHOD "calculate_sum" TOP -- matches the method at any level of nesting inside class `B`
-WITH CONTENT '''
-@0:\"\"\"Calculate sum of two numbers.
-@0:
-@0:Args:
-@1:a: First number
-@1:b: Second number
-@0:
-@0:Returns:
-@1:Sum of a and b
-\"\"\"
-''';
-{fence[1]}
-""",
-        ),
-        dict(
-            role="user",
-            content="""
-'''python
-def something():
-    pass
-
-class A:
-    def a(self, a1):
-        c, d = self.b(a1x)
-        if a1 > 0:
-            c = "x" + a1
-        return 1,2
-    def b(self, a1):
-        c, d = self.b(a1x)
-        if a1 > 0:
-            c = "x" + a1
-        return 1,2
-'''
-a1x is a mistake. It should be a1
-            """
-        ),
-        dict(
-            role="assistant",
-            content="""{fence[0]}CEDARScript
-UPDATE METHOD "a" -- this is the contex for line numbering
-FROM FILE "/dev/stdin"
-REPLACE LINE 2 -- Line counting starts at `def a(self, a1):`, so line 2 is where the *body* starts (it's `c, d = self.b(a1x)`)
--- The CONTENT below uses `LINE 2` as indent level reference
-WITH CONTENT '''
-@0:c, d = self.b(a1)
-''';
-UPDATE METHOD "b" -- this is the contex for line numbering
-FROM FILE "/dev/stdin"
-REPLACE LINE 2 -- Line counting starts at `def a(self, a1):`, so line 2 is where the *body* starts (it's `c, d = self.b(a1x)`)
--- The CONTENT below uses `LINE 2` as indent level reference
-WITH CONTENT '''
-@0:c, d = self.b(a1)
-''';
-{fence[1]}
-""",
-        ),
-        dict(
-            role="user",
-            content="""
-'''python
-class MyClass(NamedTuple):
-    instance_var_1: str = '4r3'
-    def myFirstFunction(
-        self, name: str,
-        age: int
-    ):
-        if age > 70
-            a = doSomething(name, age)
-        return a + 5 + len(self.instance_var_1) * 7
-    def middle(self):
-        pass
-    def anotherFunction(self, name: str, age: int):
-        b = checkVal(45, "strict", self.myFirstFunction(name, age), 8, "tops")
-        bb = checkVal(7, "lax", self.myFirstFunction(name, age), 2, "bottom")
-        c = "x" + '"' + "'" + "z"
-        print("calc d...")
-        d = checkVal(45, "strict", self.myFirstFunction(name, age), 8, "tops")
-        print("calc dd...")
-        print("takes longer...")
-        dd = checkVal(4455, "aasdf", '33se"asd',
-          "strict", 8, 
-          "tops", "xx",
-          '9"f', "as'df", self.myFirstFunction(name, age))
-        return b * 3
-'''
-Refactor method myFirstFunction to be a stand alone, top level function.
-            """
-        ),
-        dict(
-            role="assistant",
-            content="""Here's my plan to make this refactoring:
-1. Move the `myFirstFunction()` method from the `MyClass` class, placing it at the top level, just before the line where its class starts;
-2. Update the copied function to remove references to `self` and declare any required instance members as function parameters;
-3. Update call sites of the method `myFirstFunction` to call the new top-level function with the same name, passing any instance members as arguments;
-
-Here's the CEDARScript script:
-
-{fence[0]}CEDARScript
--- 1. Move the `myFirstFunction()` method from the `MyClass` class, placing it at the top level, just before the line where its class starts.
-UPDATE FILE "/dev/stdin"
-MOVE FUNCTION "myFirstFunction"
-INSERT BEFORE CLASS "MyClass"
-  RELATIVE INDENTATION 0; -- the function being moved will start at the same indentation as the class `MyClass`
-
--- 2. Update the copied function to remove references to `self`, now declaring `instance_var_1` as parameter
-UPDATE FUNCTION "myFirstFunction"
-  FROM FILE "/dev/stdin"
-REPLACE LINE 2
-WITH CONTENT '''
-@0:instance_var_1: str, name: str,
-''';
-UPDATE FUNCTION "middle" -- We're only using it as a unique reference point to reach `myFirstFunction`
-FROM FILE "/dev/stdin"
-REPLACE LINE 0 -- the line BEFORE function `middle`, that is, the last line of `myFirstFunction`
--- `@0:` is used because LINE 0 is the return statement of `myFirstFunction`
-WITH CONTENT '''
-@0:return a + 5 + len(instance_var_1) * 7
-''';
-
--- 3. Update ALL call sites of the method `myFirstFunction` to call the new top-level function with the same name, passing `instance_var_1` as argument
-UPDATE FUNCTION "anotherFunction"
-FROM FILE "/dev/stdin"
-REPLACE SEGMENT
-  STARTING AT LINE 2 -- "b = checkVal" ...
-  ENDING AT LINE 3 -- "bb = checkVal" ...
-WITH CONTENT '''
-@1:b = checkVal(45, "strict", myFirstFunction(instance_var_1, name, age), 8, "tops")
-@1:bb = checkVal(7, "lax", myFirstFunction(instance_var_1, name, age), 2, "bottom")
-''';
-UPDATE FUNCTION "anotherFunction"
-FROM FILE "/dev/stdin"
-REPLACE LINE 6 -- "d = checkVal" ...
-WITH CONTENT '''
-@0:d = checkVal(45, "strict", myFirstFunction(instance_var_1, name, age), 8, "tops")
-''';
-UPDATE FUNCTION "anotherFunction"
-FROM FILE "/dev/stdin"
-REPLACE LINE 12
-WITH CONTENT '''
-@0:'9"f', "as'df", myFirstFunction(instance_var_1, name, age))
-''';
-{fence[1]}
-
-Notes:
-1. As the code to be changed was provided in your message, we're using file name "/dev/stdin".
-""",
-        ),
         dict(
             role="user",
             content="""
