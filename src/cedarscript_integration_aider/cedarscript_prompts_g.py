@@ -660,6 +660,11 @@ To disambiguate an identifier:
 Incorrect: Start counting at the function/method's body
 Correct: Start counting at the first line where the function/method's signature appears.
 </context-relative-line-numbers>
+<content_literal-relative-indent-level>
+Incorrect: Using `REPLACE LINE` and providing <content_literal> a non-zero <relative-indent-level>
+Correct: When using `REPLACE LINE`, remember that the *horizontal positioning reference point* is the LINE iteself, \
+so we need to use zero as the <relative-indent-level> so that the line keeps its original indent level.
+</content_literal-relative-indent-level>
 <from-keyword-ordering>
 # FROM keyword must directly be followed by keyword `FILE` or `PROJECT`, never by `CLASS`, `FUNCTION` or other keywords.
 1) Incorrect: `FROM` followed by `CLASS`, as in `UPDATE FILE "file.py" REPLACE FUNCTION "__init__" FROM CLASS "A"`
@@ -1126,18 +1131,20 @@ INSERT BEFORE CLASS "A"
 -- 2. Update the copied function to remove references to `self`
 UPDATE FUNCTION "_candidate"
   FROM FILE "file.py"
-REPLACE LINE PREFIX '''def _candidate'''
-WITH CONTENT '''
-@0:def _candidate(a, b, c):
-''';
+REPLACE WHOLE WITH CASE
+  WHEN PREFIX '''def _candidate(self''' THEN SUB
+    r'''(def _candidate\\()self, '''
+    r'''\\1'''
+END;
 
 -- 3. Update ALL call sites of the method `_candidate()` to call the new top-level function with the same name
 UPDATE METHOD "_check"
   FROM FILE "file.py"
-REPLACE LINE PREFIX '''self._candidate'''
-WITH CONTENT '''
-@0:_candidate(
-''';
+REPLACE WHOLE WITH CASE
+  WHEN PREFIX '''self._candidate''' THEN SUB
+    r'''self\\.(_candidate)'''
+    r'''\\1'''
+END;
 {fence[1]}""",
         ),
     dict(
@@ -1187,10 +1194,11 @@ INSERT BEFORE CLASS "A"
 -- 2. Update the copied function to remove references to `self`
 UPDATE FUNCTION "_candidate"
   FROM FILE "file.py"
-REPLACE LINE PREFIX '''def _candidate'''
-WITH CONTENT '''
-@0:def _candidate(a, b, c):
-''';
+REPLACE WHOLE WITH CASE
+  WHEN PREFIX '''def _candidate(self''' THEN SUB
+    r'''(def _candidate\\()self, '''
+    r'''\\1'''
+END;
 
 -- 3. Update ALL call sites of the method `_candidate()` to call the new top-level function with the same name
 -- There are two or more of this line prefix 'self._candidate'
