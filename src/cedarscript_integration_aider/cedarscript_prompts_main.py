@@ -128,8 +128,8 @@ Another way to disambiguate is to use `OFFSET <n>` to pinpoint one.
 <dd>Tip: `OFFSET 0` == first match! Remember to use `OFFSET 0` when you want to specify the FIRST match/occurrence</dd>
 
 <dt>parent-chain: string</dt>
-<dd>A *parent chain* is a dot-separated list of parents of <identifier> to help disambiguate it</dd>
-<dd>When a reference is ambiguous (multiple matches exist for it), it must be disambiguated. Parent chains are a way to do that</dd>
+<dd>A dot-separated list of parents to uniquely identify an <identifier></dd>
+<dd>When a reference is ambiguous (multiple matches exist for it), it must be disambiguated. Parent chains are the BEST way to do that</dd>
 <dd>Examples:
 - "name" (no parent chain, matches at any nesting level, including at the top level)
 - ".name" (only root in the chain (so it's anchored), only matches "name" if it's at the top level of the file)
@@ -145,6 +145,10 @@ OFFSET 0: FIRST match;
 OFFSET 1: skips 1 matches, so points to the *2nd* match;
 OFFSET 2: skips 2 matches, so points to the *3rd* match;
 OFFSET n: skips n matches, thus specifies the (n+1)-th match;
+</dd>
+<dd>Examples with context:
+- UPDATE FUNCTION "my_func" OFFSET 0  -- Explicitly target FIRST match
+- UPDATE FUNCTION "my_func" OFFSET 1  -- Target SECOND match
 </dd>
 
 <dt>segment: SEGMENT <relpos_segment_start> <relpos_segment_end></dt>
@@ -655,41 +659,53 @@ To disambiguate a line:
 To disambiguate an identifier:
   - Use the *parent chain*: prepend one or more parent names to the identifier name, as in `MyClass.MyOtherClass.my_method`
 </p>
-<common-mistakes>
+<avoiding-common-mistakes>
+
+<reference-selection>
+# Never use ambiguous references. When selecting reference points, follow this priority:
+1. For identifiers, use parent chains: "MyClass.my_method"
+2. For lines, prefer REGEX or PREFIX line matchers
+3. Use OFFSET 0 for first match
+</reference-selection>
+
 <context-relative-line-numbers>
 Incorrect: Start counting at the function/method's body
 Correct: Start counting at the first line where the function/method's signature appears.
 </context-relative-line-numbers>
-<content_literal-relative-indent-level>
+
+<content_literal:relative-indent-level>
 Incorrect: Using `REPLACE LINE` and providing <content_literal> a non-zero <relative-indent-level>
 Correct: When using `REPLACE LINE`, remember that the *horizontal positioning reference point* is the LINE iteself, \
-so we need to use zero as the <relative-indent-level> so that the line keeps its original indent level.
-</content_literal-relative-indent-level>
+so we need to use 0 as the <relative-indent-level> so that the line keeps its original indent level.
+</content_literal:relative-indent-level>
+
 <from-keyword-ordering>
 # FROM keyword must directly be followed by keyword `FILE` or `PROJECT`, never by `CLASS`, `FUNCTION` or other keywords.
 1) Incorrect: `FROM` followed by `CLASS`, as in `UPDATE FILE "file.py" REPLACE FUNCTION "__init__" FROM CLASS "A"`
    - Correct  : `FROM` keyword followed by `FILE` or `PROJECT`, as in `UPDATE CLASS "A" FROM FILE "file.py" REPLACE FUNCTION "__init__"`
-2) Incorrect: `DELETE FUNCTION "something" FROM FILE "my_file.py"`
-   - Correct     : `UPDATE FUNCTION "something" FROM FILE "my_file.py" DELETE WHOLE;`
-   - Also correct: `UPDATE FILE "my_file.py" DELETE FUNCTION "something";`
-   - Also correct: `UPDATE CLASS "MyClass" FROM FILE "my_file.py" DELETE METHOD "something";`
+2) Incorrect: `DELETE METHOD "MyClass.something" FROM FILE "my_file.py"`
+   - Correct (best): `UPDATE FILE "my_file.py" DELETE METHOD "MyClass.something";`
+   - Also correct  : `UPDATE CLASS "MyClass" FROM FILE "my_file.py" DELETE METHOD "something";`
 <from-keyword-ordering>
+
 <clause-ordering>
 # `FROM` clause *must* come *before* an *action* clause like `DELETE`, `MOVE`, `INSERT`, `REPLACE`.
 - Incorrect: UPDATE, REPLACE, FROM, as in `UPDATE FILE "file.py" REPLACE FUNCTION "__init__" FROM CLASS "A"`
 - Correct  : UPDATE, FROM, REPLACE, as in `UPDATE CLASS "A" FROM FILE "file.py" REPLACE FUNCTION "__init__"`
 </clause-ordering>
+
 <action-clause-without-main-clause>
 # Any *action* clause like `DELETE`, `MOVE`, `INSERT` etc *MUST* be preceded by its main clause (`UPDATE`).
 - Incorrect: `UPDATE FILE "file.py" DELETE LINE "print(a)"; DELETE LINE "print(b)";`
 - Correct: `UPDATE FILE "file.py" DELETE LINE "print(a)"; UPDATE FILE "file.py" DELETE LINE "print(b)";`
 </action-clause-without-main-clause>
+
 <triple-backtick>
 # When using *triple backticks*, you *MUST* pair *every single backtick* with a preeding backslash (total of 3 pairs of backslash-backtick).
-- Incorrect (without a preceding \\ for each backtick): `WITH CONTENT '''@0:Bash: ``` rm *.py ```''';`
-- Correct (ever single backtick is preceded by a "\\"): `WITH CONTENT '''@0:Bash: \\`\\`\\` rm *.py \\`\\`\\`''';`
+- Incorrect (*without* a preceding \\ for each backtick): `WITH CONTENT '''@0:Bash: ``` rm *.py ```''';`
+- Correct (*every* single backtick is preceded by a "\\"): `WITH CONTENT '''@0:Bash: \\`\\`\\` rm *.py \\`\\`\\`''';`
 </triple-backtick>
-</common-mistakes>
+</avoiding-common-mistakes>
 
 {lazy_prompt}
 ONLY EVER RETURN CODE IN *CEDARScript block*!

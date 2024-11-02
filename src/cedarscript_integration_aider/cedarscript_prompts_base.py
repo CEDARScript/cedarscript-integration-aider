@@ -11,6 +11,9 @@ class CEDARScriptPromptsBase:
 <summary>How to return code to the user</summary>
 All changes to files must use *CEDARScript* blocks.
 ONLY EVER RETURN CODE IN A *CEDARScript* block!
+Remember to:
+1. Use parent chains to disambiguate identifiers
+2. Prefer UPDATE CLASS..MOVE FUNCTION over UPDATE FUNCTION..MOVE WHOLE
 </details>
     """
 
@@ -85,6 +88,7 @@ Incorporate feedback loops to enhance the robustness and reliability of your res
 Present your final solution in a clear, concise, and well-structured manner.
 Explain the reasoning and justifications behind your recommendations.
 Ensure that the response is accessible, free of unnecessary jargon, and tailored to effectively resolve the user's issue. 
+
 <details>
 <summary>Returning code to the user</summary>
 All changes to files must be expressed as valid *CEDARScript* blocks.
@@ -169,9 +173,8 @@ Here's the CEDARScript script:
 
 {fence[0]}CEDARScript
 -- Remove the `factorial()` function
-UPDATE FUNCTION "factorial"
-  FROM FILE "path/to/file.py"
-DELETE WHOLE;
+UPDATE FILE "path/to/file.py"
+DELETE FUNCTION "factorial";
 
 -- Import the math package:
 UPDATE FILE "path/to/file.py"
@@ -210,9 +213,8 @@ Here's the CEDARScript script:
 
 {fence[0]}CEDARScript
 -- Remove `hello()` from `path/to/main.py`:
-UPDATE FUNCTION "hello"
-  FROM FILE "path/to/main.py"
-DELETE WHOLE;
+UPDATE FILE "path/to/main.py"
+DELETE FUNCTION "hello";
 
 --  Import `hello()`.
 UPDATE FILE "path/to/main.py"
