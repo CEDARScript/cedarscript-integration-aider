@@ -43,10 +43,10 @@ help an LLM examine and understand the codebase (via DML Read-Only command).
 
 # Where:
 
-<dt>update-target: [<identifierMarker> FROM] FILE "<path>"</dt>
+<dt>update-target: [<identifier_matcher> FROM] FILE "<path>"</dt>
 <dd>Specifies what to update:
 - Direct file update (FILE "path"); Sets *reference point* for *vertical positioning* to the first line in the file.
-- A specific <identifierMarker> FROM FILE "path"; Sets *reference point* for *vertical positioning* to the \
+- A specific <identifier_matcher> FROM FILE "path"; Sets *reference point* for *vertical positioning* to the \
 first line where the identifier is declared (function signature, etc)
 </dd>
 <dd>Sets *reference point* for *vertical positioning* (Context-Relative Line Numbers)</dd>
@@ -56,17 +56,16 @@ first line where the identifier is declared (function signature, etc)
 <dd>Sets *reference point* for *horizontal positioning* (Relative Indent Level)</dd>
 <dd>The reference point is the term chosen for the (MOVE|INSERT|REPLACE) action</dd>
 
-<dt>contents: (<content_literal> | <content_from_segment> | <case_stmt> )</dt>
 <dd>Optional specification of new content:
 - <content_literal>: direct text using <relative-indent-level-string>
 - <content_from_segment>: content taken from existing code
-- <case_stmt>: can only be used in conjunction with <replace_region_clause>, as it filters a region through it
+- <filtered_content>: replaces a region by filtering it
 </dd>
 
-<dt>action-mos   : ( <update_delete_region_clause> | MOVE <marker_or_segment> <update_move_clause_destination> | <insert_clause> | <replace_region_clause> )</dt>
+<dt>action-mos   : ( <update_delete_region_clause> | MOVE <marker_or_segment> <update_move_clause_destination> | <insert_clause> WITH <contents> | <replace_region_clause> | WITH (<contents> | <filtered_content>) )</dt>
 <dd>Use when update-target is a FILE</dd>
-<dt>action-region: ( <update_delete_region_clause> | MOVE <region_field>      <update_move_clause_destination> | <insert_clause> | <replace_region_clause> )</dt>
-<dd>Use when update-target is an <identifierMarker></dd>
+<dt>action-region: ( <update_delete_region_clause> | MOVE <region_field>      <update_move_clause_destination> | <insert_clause> WITH <contents> | <replace_region_clause> | WITH (<contents> | <filtered_content>))</dt>
+<dd>Use when update-target is an <identifier_matcher></dd>
 
 </dl>
 </syntax-high-level>
@@ -76,10 +75,10 @@ first line where the identifier is declared (function signature, etc)
 
 # 3 forms are valid:
 
-1. <dt>UPDATE FILE "<path>" <action-mos> [WITH <contents>]</dt>
+1. <dt>UPDATE FILE "<path>" <action-mos></dt>
 <dd>Sets *reference point* for *vertical positioning* to the first line in the file</dd>
 
-2. <dt>UPDATE <identifierMarker> FROM FILE "<path>" <action-region> [WITH <contents>]</dt>
+2. <dt>UPDATE <identifier_matcher> FROM FILE "<path>" <action-region></dt>
 <dd>Sets *reference point* for *vertical positioning* to the first line where the identifier is declared \
 (function signature, etc)</dd>
 
@@ -93,6 +92,7 @@ first line where the identifier is declared (function signature, etc)
 
 <dt>update_delete_region_clause: DELETE <region_field></dt>
 <dd>Removes a region of code in a file</dd>
+
 <dt>insert_clause: INSERT <relpos_bai></dt>
 <dd>Specifies where content will be placed</dd>
 <dd>Used as reference point for *horizontal positioning* only (*NOT* for vertical positioning)</dd>
@@ -103,21 +103,30 @@ first line where the identifier is declared (function signature, etc)
 
 <dt>marker_or_segment: (<marker> | <segment>)</dt>
 <dd></dd>
-<dt>marker: (<lineMarker> | <identifierMarker>)</dt>
+<dt>marker: (<line_with_offset> | <identifier_matcher>)</dt>
 <dd></dd>
-<dt>lineMarker: LINE ('''<string>''' | <context-relative-line-number> | REGEX r"<regex>" | PREFIX '''<string>''' | SUFFIX '''<string>''') [OFFSET <offset>]</dt>
+
+<dt>line_matcher: [LINE] ('''<string>''' | <context-relative-line-number> | REGEX r'''<regex>''' | PREFIX '''<string>''' | SUFFIX '''<string>''' | INDENT LEVEL <integer> | EMPTY)</dt>
 <dd>Points to specific line via:
-- its *contents*, if it's unambiguous (don't use line content if the line appears multiple times);
-- its *context-relative line number* (Must use this if other types failed;
-- a regular expression pattern (REGEX);
-- a string that matches from start of line (PREFIX);
-- a string that matches from end of line (SUFFIX);
+- <string>: its *contents*, if it's unambiguous (don't use line content if the line appears multiple times);
+- <context-relative-line-number>: This can help if other types failed;
+- REGEX: a regular expression pattern;
+- PREFIX: a string that matches from start of line;
+- SUFFIX: a string that matches from end of line;
+- INDENT LEVEL: line has specific indent level 
+- EMPTY: an empty line
 </dd>
-<dt>identifierMarker: (VARIABLE | FUNCTION | METHOD | CLASS) "[parent-chain.]<name>" [OFFSET <offset>]</dt>
+
+<dt>line_with_offset: <line_matcher> [OFFSET <offset>]</dt>
+<dd>Points to a specific <line_matcher> - see <offset> below</dd>
+
+<dt>identifier_matcher: (VARIABLE | FUNCTION | METHOD | CLASS) "[parent-chain.]<name>" [OFFSET <offset>]</dt>
 <dd>Name of an identifier</dd>
 <dd>If there are 2 or more with same name, prefixed it with its *parent chain* (names of its parents separated by a dot) to disambiguate it.
 Another way to disambiguate is to use `OFFSET <n>` to pinpoint one.
 </dd>
+<dd>Tip: `OFFSET 0` == first match! Remember to use `OFFSET 0` when you want to specify the FIRST match/occurrence</dd>
+
 <dt>parent-chain: string</dt>
 <dd>A *parent chain* is a dot-separated list of parents of <identifier> to help disambiguate it</dd>
 <dd>When a reference is ambiguous (multiple matches exist for it), it must be disambiguated. Parent chains are a way to do that</dd>
@@ -132,36 +141,46 @@ Another way to disambiguate is to use `OFFSET <n>` to pinpoint one.
 <dd>Determines how many matches to skip</dd>
 <dd>When a reference is ambiguous (multiple matches exist for it), it must be disambiguated. Setting an OFFSET is a way to do that</dd>
 <dd>Examples:
-OFFSET 0: skips 0 items (so, points to the *1st* match);
+OFFSET 0: FIRST match;
 OFFSET 1: skips 1 matches, so points to the *2nd* match;
 OFFSET 2: skips 2 matches, so points to the *3rd* match;
 OFFSET n: skips n matches, thus specifies the (n+1)-th match;
 </dd>
+
 <dt>segment: SEGMENT <relpos_segment_start> <relpos_segment_end></dt>
 <dd>Points to segment identified by a start and an end pointer</dd>
 
 <dt>region_field: (BODY | WHOLE | <marker_or_segment>)</dt>
 <dt>WHOLE: keyword</dt>
 <dd>the whole chosen item</dd>
+
 <dt>BODY: keyword</dt>
 <dd>Only the function/method body (its *signature* is *NOT* considered)</dd>
+
 <dt>relpos_segment_start: STARTING (<relpos_at> | <relpos_beforeafter>)</dt>
 <dd></dd>
+
 <dt>relpos_segment_end: ENDING (<relpos_at> | <relpos_beforeafter>)</dt>
 <dd></dd>
+
 <dt>relpos_at: AT <marker></dt>
 <dd></dd>
+
 <dt>relpos_beforeafter: (BEFORE | AFTER) <marker></dt>
 <dd>Points to region immediately before or after <marker></dd>
-<dt>relpos_into: INTO <identifierMarker> (TOP | BOTTOM)</dt>
-<dd>Points to inside `identifierMarker` (either the body's TOP or BOTTOM region). The *horizontal reference point* is the body</dd>
+<dt>relpos_into: INTO <identifier_matcher> (TOP | BOTTOM)</dt>
+<dd>Points to inside `identifier_matcher` (either the body's TOP or BOTTOM region). The *horizontal reference point* is the body</dd>
 <dd>Use cases: When inserting content (e.g. a docstring or a return statement) either at the TOP or BOTTOM of a function or class body</dd>
+
 <dt>relpos_bai: (<relpos_beforeafter> | <relpos_into>)</dt>
 <dd></dd>
 <dt>relative_indentation: RELATIVE INDENTATION <relative-indent-level></dt>
 <dd>The reference point for the horizontal positioning of <relative_indentation> is the <marker> in (<insert_clause> | <replace_region_clause>)</dd>
 
 ## Content Sources
+
+<dt>contents: (<content_literal> | <content_from_segment> )</dt>
+
 <dt>content_literal: CONTENT '''<relative-indent-level-string>'''</dt>
 <dd>Examples:</dd>
 <dd>CONTENT '''@0:return "x"'''</dd>
@@ -190,20 +209,30 @@ OFFSET n: skips n matches, thus specifies the (n+1)-th match;
 <dt>content_from_segment: [singlefile_clause] <marker_or_segment> [relative_indentation]</dt>
 <dd></dd>
 
-<dt>case_stmt: CASE WHEN (EMPTY | REGEX r"<string>" | PREFIX "<string>" | SUFFIX "<string>" | INDENT LEVEL <integer> | LINE NUMBER <integer> ) \
-THEN (CONTINUE | REMOVE | REPLACE r"<string>" | INDENT <integer> | <content_literal> | <content_from_segment>)</dt>
-<dd>Only used in conjunction with <replace_region_clause>. Filters each line of the region according to WHEN/THEN pairs:</dd>
-<dd>EMPTY: Matches an empty line</dd>
-<dd>PREFIX: Matches by line prefix</dd>
-<dd>SUFFIX: Matches by line suffix</dd>
-<dd>INDENT LEVEL: Matches lines with specific indent level</dd>
-<dd>LINE NUMBER: Matches by line number</dd>
-<dd>CONTINUE: Leaves the line as is and goes to the next</dd>
-<dd>REMOVE: Removes the line</dd>
-<dd>REPLACE: Replace with regex capture groups (\\1, \\2, etc)</dd>
-<dd>INDENT: Increases or decreases indent level. Only positive or negative integers</dd>
+<dt>filtered_content: (<case_stmt> | <ed_stmt>)</dt>
+<dd>Sends the lines found in the specified scope to a filter and replace the original lines with the result</dd>
 
-<dt>
+<dt>ed_stmt: ED r'''<string>'''</dt>
+<dd>Executes a *GNU ed* (the UNIX line editor) script to filter only the lines found in the specified scope</dd>
+
+<dt>case_stmt: CASE WHEN <line_matcher> THEN <case_action></dt>
+<dd>This is the versatile `CASE WHEN...THEN` content filter. \
+Filters each line of the region according to `WHEN...THEN` pairs:</dd>
+<dd>WHEN: Allows you to choose which line *matcher* to use:</dd>
+<dd>THEN: Allows you to choose which *action* to take for its matched line</dd>
+<dd><content_literal> or <content_from_segment>: Replace with text (cannot use regex capture groups)</dd>
+
+<dt>loop_control: (CONTINUE | BREAK)</dt>
+<dd>BREAK: Stops processing the lines, leaving the rest of the lines untouched</dd>
+<dd>REMOVE: Removes the line</dd>
+
+<dt>case_action: ( <loop_control> | REMOVE [loop_control] | SUB r'''<regex>''' r'''repl''' [loop_control] | INDENT <integer> [loop_control] | (<content_literal> | <content_from_segment>) [loop_control] )
+<dd>CONTINUE: Leaves the line as is and goes to the next</dd>
+<dd>INDENT: Increases or decreases indent level. Only positive or negative integers</dd>
+<dd>SUB: Substitutes REGEX matches with <repl> (regex capture groups enabled: \\1, \\2, etc)</dd>
+<dt>repl</dt>
+<dd>regex replacement that can reference regex capture groups: \\1, \\2, etc</dd>
+),
 
 <dt>update_move_clause_destination: [TO FILE "<path>"] <insert_clause> [relative_indentation]</dt>
 
@@ -233,7 +262,7 @@ follow these rules</dd>
 ## Vertical Positioning: Context-Relative Line Numbers
 <dt>context-relative-line-number: integer</dt>
 <dd>Determines *vertical positioning*. Represents the relative line number compared to the *vertical positioning reference point* \
-(the reference point is the target chosen for the <update-target> - either the file itself or a specific <identifierMarker> in it)</dd>
+(the reference point is the target chosen for the <update-target> - either the file itself or a specific <identifier_matcher> in it)</dd>
 <dd>Number 1 points to the *first* line of its reference point; 2 points to the second, ...</dd>
 <dd>Number 0 points to the line that comes *BEFORE* its reference point; -1 points to 2 lines before, ...</dd>
 
@@ -296,17 +325,22 @@ class MyClass(NamedTuple):
     def middle(self):
         pass
     def anotherFunction(self, name: str, age: int):
-        b = checkVal(45, "strict", self.myFirstFunction(name, age), 8, "tops")
-        bb = checkVal(7, "lax", self.myFirstFunction(name, age), 2, "bottom")
-        c = "x" + '"' + "'" + "z"
-        print("calc d...")
-        d = checkVal(45, "strict", self.myFirstFunction(name, age), 8, "tops")
+        print("dummy...")
+        b = checkVal(45, "strict", self.myFirstFunction(name, age), 8, "tops", "lops")
+        bb = checkVal(7, "lax", self.myFirstFunction(name, age), 2, "bottom", 'lops')
+        c = "x" + '"' + "'" + "z" + "lops"
+        print("calc d...lops...")
+        print("dummy...")
+        d = checkVal(45, "strict", self.myFirstFunction(name, age), 8, "tops", \"\"\"lops\"\"\")
         print("calc dd...")
+
+        
         print("takes longer...")
+        print("dummy...")
         dd = checkVal(4455, "aasdf", '33se"asd',
           "strict", 8, 
-          "tops", "xx",
-          '9"f', "as'df", self.myFirstFunction(name, age))
+          "tops", "xx", 'lops'
+          '9"f', "as'df", self.myFirstFunction(name, age), 'lops')
         return b * 3
 ```
 </codebase>
@@ -317,8 +351,9 @@ Consider the files in the codebase above and see the examples below.
 <dt file="a1.py">Add Docstring to a Python function/method/body</dt>
 <dd>
 -- Using `INTO .. TOP` is the *BEST* option to add content to the top of the body
+-- The *reference point* for horizontal positioning is a_def1's body
 UPDATE FILE "a1.py"
-INSERT INTO FUNCTION "a_def1" TOP -- the *reference point* for horizontal positioning is a_def1's body
+INSERT INTO FUNCTION "a_def1" TOP
 WITH CONTENT '''
 @0:\"\"\"Calculate sum of two numbers.
 @0:
@@ -357,27 +392,30 @@ WITH CONTENT '''
 We should use the `parent chain` to easily disambiguate it:</dd>
 <dd>
 -- Target the top-level a_def2
+-- Starting the parent chain with a dot means we're anchoring the root (top level).
 UPDATE FILE "a1.py"
-INSERT INTO FUNCTION ".a_def2" TOP -- starting the parent chain with a dot means we're anchoring the root (top level).
+INSERT INTO FUNCTION ".a_def2" TOP
 WITH CONTENT '''
 @0:\"\"\"Returns a value\"\"\"
 ''';
 </dd>
 <dd>
 -- Target a_def2 inside 'a'
+-- Matches if a_def2 has 'a' as its immediate parent
 UPDATE FILE "a1.py"
-INSERT INTO FUNCTION "a.a_def2" TOP -- matches if a_def2 has 'a' as its immediate parent
+INSERT INTO FUNCTION "a.a_def2" TOP
 WITH CONTENT '''
 @0:\"\"\"Returns a value\"\"\"
 ''';
 </dd>
 
-<dt file="a1.py">Disambiguate by setting the <update-target> to a specific <identifierMarker></dt>
+<dt file="a1.py">Disambiguate by setting the <update-target> to a specific <identifier_matcher></dt>
 <dd>
 -- Set the update target to "a". Notice "a_def1" is unambiguous inside "a"
+-- Matches the function at any level of nesting *inside* the update target
 UPDATE FUNCTION "a"
 FROM FILE "a1.py"
-INSERT INTO FUNCTION "a_def1" TOP -- matches the function at any level of nesting *inside* the update target
+INSERT INTO FUNCTION "a_def1" TOP
 WITH CONTENT '''
 @0:\"\"\"Returns a value\"\"\"
 ''';
@@ -400,6 +438,89 @@ WITH CONTENT '''
 ''';
 </dd>
 
+<dt file="a3.py">Replace all print statements with logging calls while preserving indentation</dt>
+<dd>
+-- Using CASE WHEN...THEN
+UPDATE FUNCTION "my_func"
+  FROM FILE "a3.py"
+REPLACE BODY WITH CASE
+  WHEN REGEX r'''print\\(''' THEN SUB
+    r'''print\\((.*)\\)'''
+    r'''logging.info(\\1)'''
+END;
+</dd>
+<dd>
+-- Using an ed script
+UPDATE FUNCTION "my_func"
+  FROM FILE "a3.py"
+REPLACE BODY WITH ED r'''
+g/print(/s/print(\\(.*\\))/logging.info\\1/g
+''';
+</dd>
+
+<dt file="a3">Remove duplicate blank lines (collapse multiple empty lines into one)</dt>
+<dd>
+UPDATE METHOD "anotherFunction"
+FROM FILE "a3.py"
+REPLACE BODY WITH ED r'''
+g/^$/,/[^$]/-j
+''';
+</dd>
+
+<dt file="a3">Remove all comments</dt>
+<dd>
+UPDATE METHOD "anotherFunction"
+FROM FILE "a3.py"
+REPLACE BODY WITH ED r'''
+g/^\s*#/d
+''';
+</dd>
+
+<dt file="a3">Add error handling around function calls</dt>
+<dd>
+UPDATE METHOD "anotherFunction"
+FROM FILE "a3.py"
+REPLACE BODY WITH ED r'''
+'s/^(\\s*)(.*\\(\\))/\\1try:\\
+\\1    \\2\\
+\\1except Exception as e:\\
+\\1    logging.error(f"Failed: {e}")/g
+''';
+</dd>
+
+<dt file="a3.py">Replace many occurrences of a word and also delete multiple lines</dt>
+<dd>To replace `lops` with `loops` in many places, it's more concise to use a `WHEN..THEN` filter with a `REGEX` matcher</dd>
+<dd>Let's also delete all lines containing the expression 'dummy...'</dd>
+<dd>
+UPDATE METHOD "anotherFunction"
+  FROM FILE "a3.py"
+REPLACE BODY
+WITH CASE
+  WHEN REGEX r'dummy\\.\\.\\.' THEN REMOVE
+  WHEN REGEX r'lops' THEN CONTENT '''
+@0:loops
+'''
+END;
+</dd>
+
+<dt file="a3.py">Delete all empty lines in a method</dt>
+<dd>
+-- Using WHEN...THEN filter
+UPDATE METHOD "anotherFunction"
+FROM FILE "a3.py"
+REPLACE BODY WITH CASE
+  WHEN EMPTY THEN REMOVE
+END;
+</dd>
+<dd>
+-- Using an ed script filter
+UPDATE METHOD "anotherFunction"
+FROM FILE "file.py"
+REPLACE BODY WITH ED r'''
+g/^$/d
+''';
+</dd>
+
 <dt file="a3.py">Refactor a method into a stand-alone, top level function</dt>
 <dd>Let's choose method `myFirstFunction` for our example</dd>
 <dd>
@@ -414,16 +535,21 @@ UPDATE FUNCTION "myFirstFunction"
   FROM FILE "a3.py"
 REPLACE WHOLE
 WITH CASE
-  WHEN REGEX r'self,' THEN REPLACE r'instance_var_1: str,'
-  WHEN REGEX r'self\\.(instance_var_1)' THEN REPLACE r'\\1'
+  WHEN REGEX r'''self,''' THEN SUBS 
+    r'''self,'''
+    r'''instance_var_1: str,'''
+  WHEN REGEX r'''instance_var_1''' THEN SUBS
+    r'''self\\.(instance_var_1)''' -- capture the part we want to keep
+    r'''\\1''' -- replace the match with captured group 1
 END;
 
 -- 3. Update ALL call sites of the method `myFirstFunction` to call the new top-level function with the same name, passing `instance_var_1` as argument
-UPDATE FUNCTION "anotherFunction"
+UPDATE METHOD "anotherFunction"
   FROM FILE "a3.py"
-REPLACE BODY
-WITH CASE
-  WHEN REGEX r'self.(myFirstFunction)\\(' THEN REPLACE r'\\1(instance_var_1, '
+REPLACE BODY WITH CASE
+  WHEN REGEX r'''self\\.myFirstFunction''' THEN SUBS
+    r'''self\\.(myFirstFunction\\()''' -- capture the part we want to keep (which includes the opening paranthesis)
+    r'''\\1instance_var_1, ''' -- \\1 also contains the '(' so we immediately write 'instance_var_1, '
 END;
 </dd>
 
@@ -507,7 +633,6 @@ Super careful to avoid syntax errors.</step>
 
 - Pay attention to which filenames the user wants you to edit, especially if they are asking you to create a new file;
 - Use the exact file path for the file that needs to be changed (remember you can only change files that the user added to the chat!);
-- Even when being concise, don't use `/dev/stdin` unless user provided a literal source code block directly in message;
 - Each CEDARScript command is applied in the same order as they appear. If a command fails to be applied, all commands \
 before it were correctly applied (don't retry those!). Once a command is applied on a file, the next command will see \
 the update version of that file, with all changes that were applied by earlier commands;
@@ -556,8 +681,8 @@ Correct: Start counting at the first line where the function/method's signature 
 </action-clause-without-main-clause>
 <triple-backtick>
 # When using *triple backticks*, you *MUST* pair *every single backtick* with a preeding backslash (total of 3 pairs of backslash-backtick).
-- Incorrect (without a preceding \\ for each backtick): `WITH CONTENT '''Bash: ``` rm *.py ```''';`
-- Correct (ever single backtick is preceded by a "\\"): `WITH CONTENT '''Bash: \\`\\`\\` rm *.py \\`\\`\\`''';`
+- Incorrect (without a preceding \\ for each backtick): `WITH CONTENT '''@0:Bash: ``` rm *.py ```''';`
+- Correct (ever single backtick is preceded by a "\\"): `WITH CONTENT '''@0:Bash: \\`\\`\\` rm *.py \\`\\`\\`''';`
 </triple-backtick>
 </common-mistakes>
 
@@ -569,13 +694,14 @@ You MUST write <NOCEDARSCRIPT/> as the last line if:
 1) You just want *show* some CEDARScript commands to the user instead of executing them;
 2) If there are no CEDARScript blocks to execute.
 {shell_cmd_reminder}
+Finally, rephrase and summarize my instructions. Only then, respond. Do so by thinking step by step.
 """
 
     example_messages = CEDARScriptPromptsBase.example_messages + [
         dict(
             role="user",
             content="""
-'''python
+```file.py
 class MyClass(NamedTuple):
     instance_var_1: str = '4r3'
     def myFirstFunction(self, name: str, age: int):
@@ -584,17 +710,22 @@ class MyClass(NamedTuple):
             name: name
             age: age
         \"\"\"
+        if age > 50
+          return a + 5 + 7 + 9
         if age > 70
           a = doSomething(name, age)
-          return a + 5 + len(self.instance_var_1) * 7
+          return a + 5 + 1 + len(self.instance_var_1) * 7
       def middle(self):
           pass
       def anotherFunction(self, name: str, age: int):
           # Check and store in 'b' and 'bb'
+          # Remember NOT to call self.myFirstFunction(a, b) ever !!!
           b = checkVal(45, "strict", self.myFirstFunction(name, age), 8, "tops")
+          ba = 4 + checkVal(77, "strict", "z" + self.myFirstFunction("x" + name, 4 + age), 8, "tops")
           bb = checkVal(7, "lax", self.myFirstFunction(name, age), 2, "bottom")
+          c = checkVal(4, "strict", self.myFirstFunction("x", 4), 8, "tops")
           return b + bb
-  '''
+```
   Refactor method myFirstFunction to be a stand alone, top level function.
               """
         ),
@@ -609,46 +740,47 @@ Here's the CEDARScript script:
 
 {fence[0]}CEDARScript
 -- 1. Move the `myFirstFunction` method from the `MyClass` class, placing it at the top level, just before the line where its class starts.
-UPDATE FILE "/dev/stdin"
-MOVE FUNCTION "myFirstFunction"
+UPDATE METHOD "MyClass.myFirstFunction"
+  FROM FILE "file.py"
+MOVE WHOLE
 INSERT BEFORE CLASS "MyClass"
   RELATIVE INDENTATION 0; -- the block of code being moved wil start at the same indentation as the 'reference mark'
 
 -- 2. Update the copied function to remove references to `self`, now declaring `instance_var_1` as parameter
+/* Match the line with the prefix that contains the OLD version of the line (`def myFirstFunction(self`) and
+replaces the whole line with the NEW version we want: `def myFirstFunction(self`
+*/
 UPDATE FUNCTION "myFirstFunction"
-  FROM FILE "/dev/stdin"
-REPLACE LINE 1
+  FROM FILE "file.py"
+REPLACE LINE PREFIX '''def myFirstFunction(self'''
 WITH CONTENT '''
 @0:def myFirstFunction(instance_var_1: str, name: str, age: int):
 ''';
-UPDATE FUNCTION "middle" -- We're only using it as a unique reference point to reach `myFirstFunction`
-  FROM FILE "/dev/stdin"
-REPLACE LINE 0 -- the line BEFORE function `middle`, that is, the last line of `myFirstFunction`
--- `@0:` is used because LINE 0 is the return statement of `myFirstFunction`
+/* Match the line prefix with OLD content and replace the whole line with the NEW content we want
+UPDATE FUNCTION "myFirstFunction"
+  FROM FILE "file.py"
+REPLACE LINE PREFIX '''return a + 5 + 1 + len(self'''
 WITH CONTENT '''
-@0:return a + 5 + len(instance_var_1) * 7
+@0:return a + 5 + 1 + len(instance_var_1) * 7
 ''';
 
 -- 3. Update ALL call sites of the method `myFirstFunction` to call the new top-level function with the same name, passing `instance_var_1` as argument
-UPDATE FUNCTION "anotherFunction"
-FROM FILE "/dev/stdin"
-REPLACE SEGMENT
-  STARTING AT LINE 3 -- "b = checkVal" ...
-  ENDING AT LINE 4 -- "bb = checkVal" ...
-WITH CONTENT '''
-@0:b = checkVal(45, "strict", myFirstFunction(instance_var_1, name, age), 8, "tops")
-@0:bb = checkVal(7, "lax", myFirstFunction(instance_var_1, name, age), 2, "bottom")
-''';
+-- Make sure to search for the OLD content and replace it with the NEW content we want
+UPDATE METHOD "MyClass.anotherFunction"
+  FROM FILE "file.py"
+REPLACE BODY WITH CASE
+  WHEN PREFIX '''#''' THEN CONTINUE
+  WHEN REGEX r'''self\\.myFirstFunction''' THEN SUB
+    r'''self\\.(myFirstFunction)''' -- match and capture the part we need to keep
+    r'''\\1''' -- replace the match with the part we need to keep (stored in group 1)
+END;
 {fence[1]}
-
-Notes:
-1. As the code to be changed was provided in your message, we're using file name "/dev/stdin".
 """,
         ),
         dict(
             role="user",
             content="""
-'''python
+```file.py
 class GreeterClone:
     def __init__(self):
         pass
@@ -668,7 +800,7 @@ class Greeter:
     def greet(self, name):
         print('...Nice to meet you!')
         print("Hope you're doing well!")
-'''
+```
 
 In `Greeter` class above, we have placeholder methods that need to be implemented, and the last method should:
 1. Print the name using prefix `Hi, ` before it does anything else (should be the very first thing);
@@ -687,36 +819,38 @@ Here's the CEDARScript script:
 
 {fence[0]}CEDARScript
 -- 1. Add instance variable `greeting_count: int` to the `Greeter` class to keep track of the greeting count
-UPDATE CLASS "Greeter" -- As method `__init__` exists in more than 1 class, we specify which one we want to reference
-  FROM FILE "/dev/stdin"
-REPLACE METHOD "__init__" -- Replace the entire method, as there's nothing to keep
+-- As method `__init__` exists in more than 1 class, use `parent chain` to disambiguate
+UPDATE METHOD "Greeter.__init__"
+  FROM FILE "file.py"
+REPLACE BODY
 WITH CONTENT '''
-@0:def __init__(self):
-@1:self.greeting_count: int = 0
+@0:self.greeting_count: int = 0
 ''';
 
 -- 2. Implement the `print_with_prefix()` method to print parameter `name` prefixed with the `prefix` parameter;
-UPDATE CLASS "Greeter" -- As method `print_with_prefix` exists in more than 1 class, we specify which one we want to reference
-  FROM FILE "/dev/stdin"
-REPLACE METHOD "print_with_prefix" -- no need to preserve it, so we replace it
+-- As method `print_with_prefix` exists in more than 1 class, we specify which one we want to reference
+UPDATE METHOD "Greeter.print_with_prefix"
+  FROM FILE "file.py"
+REPLACE BODY
 WITH CONTENT '''
-@0:def print_with_prefix(self, prefix: str, name: str):
-@1:print(f"{{prefix}}{{name}}")
+@0:print(f"{{prefix}}{{name}}")
 ''';
 
 -- 3. Insert a call to the `print_with_prefix()` method at the top of the last method (`greet`);
-UPDATE CLASS "Greeter" -- As method `greet` exists in more than 1 class, we specify which one we want to reference
-  FROM FILE "/dev/stdin"
+-- As method `greet` exists in more than 1 class, we specify which one we want to reference
+UPDATE CLASS "Greeter"
+  FROM FILE "file.py"
 INSERT INTO METHOD "greet" TOP -- at the TOP of the function body
 -- The function body is the reference indent level; `@0:` means to use that same level 
 WITH CONTENT '''
 @0:print_with_prefix('Hi, ', name)
 ''';
 
--- 4. Insert code at the bottom of the `greet()` method to increment the greeting count and print it.
-UPDATE CLASS "Greeter" -- As method `greet` exists in more than 1 class, we specify which one we want to reference
-  FROM FILE "/dev/stdin"
-INSERT INTO METHOD "greet" BOTTOM -- at the BOTTOM of the function body
+-- 4. Insert code at the bottom of the body of `greet()` method to increment the greeting count and print it.
+-- As method `greet` exists in more than 1 class, we specify which one we want to reference
+UPDATE CLASS "Greeter"
+  FROM FILE "file.py"
+INSERT INTO METHOD "greet" BOTTOM
 -- The function body is the reference indent level; `@0:` means to use that same level 
 WITH CONTENT '''
 @0:self.greeting_count += 1
@@ -725,13 +859,13 @@ WITH CONTENT '''
 {fence[1]}
 
 Notes to self:
-1. As the code to be changed was provided in the message, we're using file name "/dev/stdin".
+1. As the code to be changed was provided in the message, we're using file name "file.py".
 2. When using `INTO`, the body of the function or class is implicit, so we can NEVER write `BODY` after `INTO`.
 """,
         ),
         dict(
             role="user",
-            content="""'''python
+            content="""```file.py
 class A0:
     def __init__(self, v: int):
         self.instance_var = v
@@ -769,7 +903,7 @@ class A:
         c += 1
         # print
         print(c)
-'''
+```
 Refactor the `calc1` method in the `A` class to be a stand alone, top level function.
 """
         ),
@@ -784,44 +918,42 @@ Here's the CEDARScript script:
 
 {fence[0]}CEDARScript
 -- 1. Move the `calc1` method from the `A` class, placing it at the top level, just before the line where its class starts
-UPDATE CLASS "A" -- As method `calc1` exists in more than 1 class, we specify which one we want to reference
-  FROM FILE "/dev/stdin"
-MOVE METHOD "calc1"
+-- As method `calc1` exists in more than 1 class, we specify which one we want to reference
+UPDATE METHOD "A.calc1"
+  FROM FILE "file.py"
+MOVE WHOLE
 INSERT BEFORE CLASS "A"
   RELATIVE INDENTATION 0;
 
 -- 2. Update the copied function to remove references to `self`, now declaring `instance_var` as parameter
-UPDATE FUNCTION "calc1" OFFSET 1 -- Now, `calc1` exists as a top-level function before class `A` (we just moved it), but there's also a method with the same name inside class `A0`, so we use `OFFSET 1` to skip the first match (the one from `A0`)
-  FROM FILE "/dev/stdin"
-REPLACE LINE '''def calc1(self, a):'''
+-- Make sure to search for the OLD content (`def calc1(self`) and replace it with the NEW content we want (`def calc1(instance_var`)
+UPDATE FUNCTION ".calc1"
+  FROM FILE "file.py"
+REPLACE LINE PREFIX '''def calc1'''
 WITH CONTENT '''
 @0:def calc1(instance_var: int, a):
 ''';
-UPDATE FUNCTION "calc1" OFFSET 1 -- to skip 1 match (the one from `A0`)
-  FROM FILE "/dev/stdin"
-REPLACE LINE \"\"\"after 'self') by a value stored in 'self.instance_var'.\"\"\"
-WITH CONTENT '''
-@0:after 'instance_var') by a value stored in 'instance_var'.
-''';
-UPDATE FUNCTION "calc1" OFFSET 1 -- to skip 1 match (the one from `A0`)
-  FROM FILE "/dev/stdin"
-REPLACE LINE '''return a * self.instance_var'''
-WITH CONTENT '''
-@0:return a * instance_var
-''';
+UPDATE FUNCTION ".calc1"
+  FROM FILE "file.py"
+REPLACE BODY WITH CASE
+  WHEN REGEX r"self\\.instance_var" THEN SUB
+    r'''self\\.(instance_var)''' -- match and capture the part we need to keep
+    r'''\\1''' -- replace the match with the part we need to keep (stored in group 1)
+END;
 
 -- 3. Update ALL call sites of the method `calc1` to call the new top-level function with the same name, passing `instance_var` as argument
-UPDATE FUNCTION "calc2" OFFSET 1 -- There are 2 `calc2` methods. We skip 1, meaning we target the second one (which is the one in the `A` class)
-  FROM FILE "/dev/stdin"
-REPLACE LINE 'c = self.calc1(' -- There's only 1 call site, so it's more concise to just replace a line instead of the whole `calc2` contents
-WITH CONTENT '''
-@0:c = calc1(self.instance_var,
-''';
+UPDATE METHOD "A.calc2"
+  FROM FILE "file.py"
+REPLACE BODY WITH CASE
+  WHEN REGEX r'''self\\.calc1''' THEN SUB
+    r'''self\\.calc1\\('''
+    r'''calc1(self.instance_var,'''
+END;
 {fence[1]}""",
         ),
     dict(
             role="user",
-            content="""'''python
+            content="""```file.py
 class A0:
     def __init__(self, v: int):
         self.instance_var = v
@@ -838,6 +970,7 @@ class A:
         return a * self.instance_var
     def calc2(self, a):
         # print a
+        # I'm a bad line, get rid of me!
         print(a)
         # Call calc1...
         c = ["x", str(self.calc1(
@@ -846,8 +979,8 @@ class A:
             6), "xx"]
         # Done...
         return c
-'''
-Refactor the `calc1` method in the `A` class to be a stand alone, top level function. Also, there's a line that clearly needs to be removed.
+```
+Refactor the `calc1` method in the `A` class to be a stand alone, top level function. Also, there's some 'bad' lines that clearly need to be removed.
 """
         ),
         dict(
@@ -862,16 +995,19 @@ Here's the CEDARScript script:
 
 {fence[0]}CEDARScript
 -- 1. Move the `calc1` method from the `A` class, placing it at the top level, just before the line where its class starts
-UPDATE CLASS "A" -- As method `calc1` exists in more than 1 class, we specify which one we want to reference
-  FROM FILE "/dev/stdin"
-MOVE METHOD "calc1"
+-- As method `calc1` exists in more than 1 class, we specify which one we want to reference
+UPDATE METHOD "A.calc1"
+  FROM FILE "file.py"
+MOVE WHOLE
 INSERT BEFORE CLASS "A"
   RELATIVE INDENTATION 0;
 
 -- 2. Replace the whole copied function to remove references to `self` and declare `instance_var` as parameter
-UPDATE FUNCTION "calc1" OFFSET 1 -- Now, `calc1` exists as a top-level function before class `A` (we just moved it), but there's also a method with the same name inside class `A0`, so we use `OFFSET 1` to skip the first match (the one from `A0`)
-  FROM FILE "/dev/stdin"
-REPLACE WHOLE -- It's better to replace the whole function because the function is small
+-- Now, `calc1` exists as a top-level function before class `A`
+-- It's better to replace the whole function because the function is small
+UPDATE FUNCTION ".calc1" OFFSET 1
+  FROM FILE "file.py"
+REPLACE WHOLE
 WITH CONTENT '''
 @0:def calc1(instance_var: int, a):
 @1:return a * instance_var
@@ -879,38 +1015,32 @@ WITH CONTENT '''
 
 -- 3. Update ALL call sites of the method `calc1` to call the new top-level function with the same name, passing `instance_var` as argument
 UPDATE FUNCTION "A.calc2"
-  FROM FILE "/dev/stdin"
-REPLACE LINE 5
-WITH CONTENT '''
-@0:c = ["x", str(calc1(self.instance_var,
-''';
-UPDATE FUNCTION "calc2" OFFSET 1
-  FROM FILE "/dev/stdin"
-REPLACE LINE 7
-WITH CONTENT '''
-@01:c = ["x", str(calc1(self.instance_var,
-''';
--- Note to self: A line marker referencing 'c = ["x", str(self.calc1(' would be ambiguous, since there are 2 or more \
-matches for it. Thus, it's important to use context-relative line numbers.
+  FROM FILE "file.py"
+REPLACE BODY WITH CASE
+  WHEN PREFIX '''# I'm a bad''' THEN REMOVE
+  WHEN REGEX r'''self\\.calc1''' THEN SUB
+    r'''self\\.calc1\\('''
+    r'''calc1(self.instance_var,'''
+END;
 
--- 4. Delete the bad line
-UPDATE FILE "/dev/stdin"
-DELETE LINE "# I'm a bad line, get rid of me!";
+-- 4. Delete the remaining bad line (it's in the other method)
+UPDATE FILE "file.py"
+DELETE LINE PREFIX '''# I'm a bad'''; -- Removes the whole line that starts with that prefix
 {fence[1]}""",
         ),
     dict(
             role="user",
-            content="""'''python
+            content="""```file.py
 def calc1(a):
     return a * 7.0
 def calc2(a):
     c = ["x", str(calc1(
-        5), "xx"]
+        5), "xx")]
     c = ["x", str(calc1(
-        6), "xx"]
+        6), "xx")]
     # Done...
     return c
-'''
+```
 Refactor the calc1 function to introduce tax: float as first parameter.
 The function should use the new parameter instead of 7.
 Function calc2 should also get this new parameter, but as last parameter and with name base_tax and default value 1.3.
@@ -928,7 +1058,7 @@ Here's the CEDARScript script:
 {fence[0]}CEDARScript
 -- 1. Update the function signature of `calc1()` to add parameter `tax: float` as the first one and use the new parameter instead of `7`
 UPDATE FUNCTION "calc1"
-  FROM FILE "/dev/stdin"
+  FROM FILE "file.py"
 REPLACE WHOLE
 WITH CONTENT'''
 @0:def calc1(tax: float, a):
@@ -936,32 +1066,22 @@ WITH CONTENT'''
 ''';
 
 -- 2. Update the function signature of `calc2()` to add parameter `base_tax: float = 1.3` as the last one
-UPDATE FUNCTION "calc2"
-  FROM FILE "/dev/stdin"
-REPLACE LINE 1
-WITH CONTENT'''
-@0:def calc2(a, base_tax: float = 1.3):
-''';
-
 -- 3. Update ALL call sites of `calc1()` to pass `base_tax` as the first argument
-UPDATE FILE "/dev/stdin"
-REPLACE LINE 2
-WITH CONTENT '''
-@0:c = ["x", str(calc1(base_tax,
-''';
 UPDATE FUNCTION "calc2"
-  FROM FILE "/dev/stdin"
-REPLACE LINE 4
-WITH CONTENT '''
-@0:c = ["x", str(calc1(base_tax,
-''';
--- Note to self: A line marker referencing 'c = ["x", str(calc1(' would be ambiguous, since there are 2 or more \
-matches for it. Thus, it's important to use context-relative line numbers.
+  FROM FILE "file.py"
+REPLACE WHOLE WITH CASE
+  WHEN PREFIX '''def calc2''' THEN CONTENT '''
+@0:def calc2(a, base_tax: float = 1.3):
+'''
+  WHEN REGEX r'''calc1\\(''' THEN SUB
+    r'''(calc1\\()'''
+    r'''\\1base_tax,'''
+END;
 {fence[1]}""",
         ),
     dict(
             role="user",
-            content="""'''python
+            content="""```file.py
 class A:
     def _calc(self, a):
         return a
@@ -982,7 +1102,7 @@ class A:
 
     def _candidate(self, a, b, c):
         return a
-'''
+```
 Refactor the `_candidate` method to be a stand alone, top level function.
 """
         ),
@@ -997,23 +1117,24 @@ Here's the CEDARScript script:
 
 {fence[0]}CEDARScript
 -- 1. Move the `_candidate()` method from the `A` class, placing it at the top level, just before the line where its class starts
-UPDATE FILE "/dev/stdin"
-MOVE METHOD "_candidate" -- As method `_candidate` only exists in one place, it's unambiguous, so we ought to directly reference it
+UPDATE METHOD "_candidate"
+  FROM FILE "file.py"
+MOVE WHOLE
 INSERT BEFORE CLASS "A"
   RELATIVE INDENTATION 0;
 
 -- 2. Update the copied function to remove references to `self`
 UPDATE FUNCTION "_candidate"
-  FROM FILE "/dev/stdin"
-REPLACE LINE 1
+  FROM FILE "file.py"
+REPLACE LINE PREFIX '''def _candidate'''
 WITH CONTENT '''
 @0:def _candidate(a, b, c):
 ''';
 
 -- 3. Update ALL call sites of the method `_candidate()` to call the new top-level function with the same name
 UPDATE METHOD "_check"
-  FROM FILE "/dev/stdin"
-REPLACE LINE '''self._candidate(''' -- There's only 1 call site and this line marker is unambiguous
+  FROM FILE "file.py"
+REPLACE LINE PREFIX '''self._candidate'''
 WITH CONTENT '''
 @0:_candidate(
 ''';
@@ -1021,14 +1142,13 @@ WITH CONTENT '''
         ),
     dict(
             role="user",
-            content="""'''python
+            content="""```file.py
 class A:
     def _calc(self, a):
         return a
     def _check(self, a: int, b, c):
         if a > 0:
-            return self._calc(
-                "a thing or two"
+            return self._candidate( "a thing or two"
             )
         else:
             return list(
@@ -1042,7 +1162,7 @@ class A:
 
     def _candidate(self, a, b, c):
         return a
-'''
+```
 Refactor the `_candidate` method to be a stand alone, top level function.
 """
         ),
@@ -1057,27 +1177,30 @@ Here's the CEDARScript script:
 
 {fence[0]}CEDARScript
 -- 1. Move the `_candidate()` method from the `A` class, placing it at the top level, just before the line where its class starts
-UPDATE CLASS "A" -- As method `_candidate` only exists in one place, it's unambiguous, but this time we wmust try the alternative form `UPDATE CLASS..MOVE FUNCTION` (instead of `UPDATE FUNCTION..MOVE WHOLE`) because the latter failed last time we tried.
-  FROM FILE "/dev/stdin"
+-- As method `_candidate` only exists in one place, it's unambiguous, but this time we wmust try the alternative form `UPDATE CLASS..MOVE FUNCTION` (instead of `UPDATE FUNCTION..MOVE WHOLE`) because the latter failed last time we tried.
+UPDATE CLASS "A"
+  FROM FILE "file.py"
 MOVE METHOD "_candidate"
 INSERT BEFORE CLASS "A"
   RELATIVE INDENTATION 0;
 
 -- 2. Update the copied function to remove references to `self`
 UPDATE FUNCTION "_candidate"
-  FROM FILE "/dev/stdin"
-REPLACE LINE 1
+  FROM FILE "file.py"
+REPLACE LINE PREFIX '''def _candidate'''
 WITH CONTENT '''
 @0:def _candidate(a, b, c):
 ''';
 
 -- 3. Update ALL call sites of the method `_candidate()` to call the new top-level function with the same name
-UPDATE METHOD "_check"
-  FROM FILE "/dev/stdin"
-REPLACE LINE '''self._candidate(''' -- There's only 1 call site and this line marker is unambiguous
-WITH CONTENT '''
-@0:_candidate(
-''';
+-- There are two or more of this line prefix 'self._candidate'
+UPDATE METHOD "A._check"
+  FROM FILE "file.py"
+REPLACE BODY WITH CASE
+  WHEN LINE PREFIX '''self._candidate''' THEN SUB
+    r'''self\\.(_candidate)'''
+    r'''\\1'''
+END;
 {fence[1]}""",
         ),
     ]

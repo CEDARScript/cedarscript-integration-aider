@@ -169,8 +169,9 @@ Here's the CEDARScript script:
 
 {fence[0]}CEDARScript
 -- Remove the `factorial()` function
-UPDATE FILE "path/to/file.py"
-DELETE FUNCTION "factorial";
+UPDATE FUNCTION "factorial"
+  FROM FILE "path/to/file.py"
+DELETE WHOLE;
 
 -- Import the math package:
 UPDATE FILE "path/to/file.py"
@@ -209,8 +210,9 @@ Here's the CEDARScript script:
 
 {fence[0]}CEDARScript
 -- Remove `hello()` from `path/to/main.py`:
-UPDATE FILE "path/to/main.py"
-DELETE FUNCTION "hello";
+UPDATE FUNCTION "hello"
+  FROM FILE "path/to/main.py"
+DELETE WHOLE;
 
 --  Import `hello()`.
 UPDATE FILE "path/to/main.py"
@@ -233,7 +235,7 @@ WITH CONTENT '''
         dict(
             role="user",
             content="""
-'''python
+```file.py
 import os
 
 def warm_cache_worker():
@@ -247,8 +249,8 @@ def warm_cache_worker():
 
 		self.warming_pings_left -= 1
 		self.next_cache_warm = time.time() + delay
-'''
-Log the value of now in the code above, and then call now_changed with now as argument 
+```
+Log the value of now, and then call now_changed with now as argument 
             """
         ),
         dict(
@@ -262,16 +264,17 @@ Here's the CEDARScript script:
 
 {fence[0]}CEDARScript
 -- Import the logging module:
-UPDATE FILE "/dev/stdin" -- Using this file because the code was provided in the message itself
-INSERT BEFORE LINE '''import os'''
+UPDATE FILE "file.py"
+INSERT BEFORE LINE PREFIX '''import ''' OFFSET 0
 WITH CONTENT '''
 @0:import logging
 ''';
+-- Using `BEFORE .. OFFSET 0` means before the FIRST match
  
 -- Add a logging statement to print the value of 'now':
 UPDATE FUNCTION "warm_cache_worker"
-FROM FILE "/dev/stdin"
-INSERT AFTER LINE '''now = time.time()'''
+FROM FILE "file.py"
+INSERT AFTER LINE PREFIX '''now = time.time'''
 WITH CONTENT '''
 @0:logging.debug(f"Cache warming attempt at {{}}; Will validate its value in the next line...", now)
 @0:now_changed(now)
