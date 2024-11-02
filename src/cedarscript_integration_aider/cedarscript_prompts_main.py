@@ -110,7 +110,7 @@ first line where the identifier is declared (function signature, etc)
 <dd>Points to specific line via:
 - <string>: its *contents*, if it's unambiguous (don't use line content if the line appears multiple times);
 - <context-relative-line-number>: This can help if other types failed;
-- REGEX: a regular expression pattern;
+- REGEX: a regular expression pattern; *MUST* use a raw string (one that starts with r''')
 - PREFIX: a string that matches from start of line;
 - SUFFIX: a string that matches from end of line;
 - INDENT LEVEL: line has specific indent level 
@@ -233,9 +233,10 @@ Filters each input line according to `WHEN...THEN` pairs:</dd>
 <dt>case_action: ( <loop_control> | REMOVE [loop_control] | SUB r'''<regex>''' r'''repl''' [loop_control] | INDENT <integer> [loop_control] | (<content_literal> | <content_from_segment>) [loop_control] )
 <dd>CONTINUE: Leaves the line as is and goes to the next</dd>
 <dd>INDENT: Increases or decreases indent level. Only positive or negative integers</dd>
-<dd>SUB: Substitutes REGEX matches with <repl> (regex capture groups enabled: \\1, \\2, etc)</dd>
-<dt>repl</dt>
-<dd>regex replacement that can reference regex capture groups: \\1, \\2, etc</dd>
+<dd>SUB: Substitutes <regex> matches with <repl> (regex capture groups enabled: \\1, \\2, etc)</dd>
+<dt>regex: *MUST* use a raw string (one that starts with r''')</dt>
+<dt>repl: *MUST* use a raw string (one that starts with r''')</dt>
+<dd>A regex replacement that can reference regex capture groups: \\1, \\2, etc</dd>
 ),
 
 <dt>update_move_clause_destination: [TO FILE "<path>"] <insert_clause> [relative_indentation]</dt>
@@ -284,6 +285,16 @@ MV FILE "<source>" TO "<target>";
 ## Cookbook
 
 <codebase>
+```Makefile
+.PHONY: all version play build test dist clean
+
+all: clean build version test
+
+version:
+	git describe --tags
+	python -m setuptools_scm
+```
+
 ```a1.py
 def a_def1(
     a,
@@ -303,13 +314,17 @@ def a_def2():
 
 ```a2.py
 class A:
-    def a(self, a1):
+    def a(self, a1, a2):
         c, d = self.b(a1x)
+        # a2x is incorrect
+        c, d = self.b(a2x)
         if a1 > 0:
             c = "x" + a1
         return 1,2
     def b(self, a1):
         c, d = self.b(a1x)
+        # a2x is wrong
+        c, d = self.b(a2x)
         if a1 > 0:
             c = "x" + a1
         return 1,2
@@ -352,6 +367,31 @@ class MyClass(NamedTuple):
 Consider the files in the codebase above and see the examples below.
 
 <dl note="each 'dd' item gets a fresh copy of the codebase files">
+<dt file="Makefile">Add `v` as an alias to `version`</dt>
+<dd>
+UPDATE FILE "Makefile"
+REPLACE WHOLE WITH CASE
+  WHEN PREFIX '''.PHONY''' THEN SUB
+    r'''version'''
+    r'''version v'''
+  WHEN PREFIX '''version''' THEN SUB
+    r'''version'''
+    r'''version v'''
+END;
+</dd>
+<dd>
+-- We can use a regex group reference (\\1) to be even more concise
+UPDATE FILE "Makefile"
+REPLACE WHOLE WITH CASE
+  WHEN PREFIX '''.PHONY''' THEN SUB
+    r'''(version)'''
+    r'''\\1 v'''
+  WHEN PREFIX '''version''' THEN SUB
+    r'''^(version)'''
+    r'''\\1 v'''
+END;
+</dd>
+
 <dt file="a1.py">Add Docstring to a Python function/method/body</dt>
 <dd>
 -- Using `INTO .. TOP` is the *BEST* option to add content to the top of the body
@@ -425,21 +465,49 @@ WITH CONTENT '''
 ''';
 </dd>
 
-<dt file="a2.py">Replace two occurrences of a line</dt>
-<dd>Replace references to 'a1x' with 'a1' in 2 lines</dd>
+<dt file="a2.py">Replace all occurrences of a string</dt>
+<dd>Replace references to 'a1x' with 'a1' in all lines</dd>
 <dd>
-UPDATE METHOD "a"
+-- Replace ALL occurrences of 'a1x' with 'a1' using a simple CASE WHEN...THEN filter
+UPDATE CLASS "A"
   FROM FILE "a2.py"
-REPLACE LINE '''c, d = self.b(a1x)'''
-WITH CONTENT '''
-@0:c, d = self.b(a1)
-''';
-UPDATE METHOD "b"
-FROM FILE "a2.py"
-REPLACE LINE '''c, d = self.b(a1x)'''
-WITH CONTENT '''
-@0:c, d = self.b(a1)
-''';
+REPLACE WHOLE WITH CASE
+  WHEN REGEX r'''a1x''' THEN SUB
+    r'''a1x'''
+    r'''a1'''
+END;
+</dd>
+<dd>
+-- Alternative form (more specific)
+UPDATE CLASS "A"
+  FROM FILE "a2.py"
+REPLACE WHOLE WITH CASE
+  WHEN REGEX r'''a1x''' THEN SUB
+    r'''\(a1x\)'''
+    r'''(a1)'''
+END;
+</dd>
+<dd>Replace references to 'a2x' with 'a2' in all lines except comment lines</dd>
+<dd>
+-- To avoid touching the comment line, now we *MUST* be more specific in the SUB clause
+UPDATE CLASS "A"
+  FROM FILE "a2.py"
+REPLACE WHOLE WITH CASE
+  WHEN REGEX r'''a2x''' THEN SUB
+    r'''\(a2x\)'''
+    r'''(a2)'''
+END;
+</dd>
+<dd>
+-- Alternative form (directly skipping all comment lines)
+UPDATE CLASS "A"
+  FROM FILE "a2.py"
+REPLACE WHOLE WITH CASE
+  WHEN PREFIX '''#''' THEN CONTINUE
+  WHEN REGEX r'''a2x''' THEN SUB
+    r'''a2x'''
+    r'''a2'''
+END;
 </dd>
 
 <dt file="a3.py">Replace all print statements with logging calls while preserving indentation</dt>
@@ -500,8 +568,8 @@ UPDATE METHOD "anotherFunction"
   FROM FILE "a3.py"
 REPLACE BODY
 WITH CASE
-  WHEN REGEX r'dummy\\.\\.\\.' THEN REMOVE
-  WHEN REGEX r'lops' THEN CONTENT '''
+  WHEN REGEX r'''dummy\\.\\.\\.''' THEN REMOVE
+  WHEN REGEX r'''lops''' THEN CONTENT '''
 @0:loops
 '''
 END;
@@ -659,53 +727,69 @@ To disambiguate a line:
 To disambiguate an identifier:
   - Use the *parent chain*: prepend one or more parent names to the identifier name, as in `MyClass.MyOtherClass.my_method`
 </p>
-<avoiding-common-mistakes>
 
-<reference-selection>
-# Never use ambiguous references. When selecting reference points, follow this priority:
+<dl>Avoiding Common Mistakes</dl>
+
+<dt>Reference selection</dt>
+<dd>
+Never use ambiguous references. When selecting reference points, follow this priority:
 1. For identifiers, use parent chains: "MyClass.my_method"
 2. For lines, prefer REGEX or PREFIX line matchers
 3. Use OFFSET 0 for first match
-</reference-selection>
+</dd>
 
-<context-relative-line-numbers>
+<dt>context-relative-line-numbers</dt>
+<dd>
 Incorrect: Start counting at the function/method's body
 Correct: Start counting at the first line where the function/method's signature appears.
-</context-relative-line-numbers>
+</dd>
 
-<content_literal:relative-indent-level>
+<dt>content_literal: relative-indent-level</dt>
+<dd>
 Incorrect: Using `REPLACE LINE` and providing <content_literal> a non-zero <relative-indent-level>
 Correct: When using `REPLACE LINE`, remember that the *horizontal positioning reference point* is the LINE iteself, \
 so we need to use 0 as the <relative-indent-level> so that the line keeps its original indent level.
-</content_literal:relative-indent-level>
+</dd>
 
-<from-keyword-ordering>
-# FROM keyword must directly be followed by keyword `FILE` or `PROJECT`, never by `CLASS`, `FUNCTION` or other keywords.
+<dt>Turning method into top-level function</dt>
+<dd type="*CRUCIAL*">
+After moving the method to the top level (thus turning it into a function), you *MUST*:
+1. Update the new function to remove ALL references to `self` (i.e. in its function signature and its body)
+2. Update ALL call sites of the moved method throughout the file to remove the `self.` prefix
+</dd>
+
+<dt>FROM keyword ordering</dt>
+<dd>FROM keyword must directly be followed by keyword `FILE` or `PROJECT`, never by `CLASS`, `FUNCTION` or other keywords</dd>
+<dd>
 1) Incorrect: `FROM` followed by `CLASS`, as in `UPDATE FILE "file.py" REPLACE FUNCTION "__init__" FROM CLASS "A"`
    - Correct  : `FROM` keyword followed by `FILE` or `PROJECT`, as in `UPDATE CLASS "A" FROM FILE "file.py" REPLACE FUNCTION "__init__"`
 2) Incorrect: `DELETE METHOD "MyClass.something" FROM FILE "my_file.py"`
    - Correct (best): `UPDATE FILE "my_file.py" DELETE METHOD "MyClass.something";`
    - Also correct  : `UPDATE CLASS "MyClass" FROM FILE "my_file.py" DELETE METHOD "something";`
-<from-keyword-ordering>
+</dd>
 
-<clause-ordering>
-# `FROM` clause *must* come *before* an *action* clause like `DELETE`, `MOVE`, `INSERT`, `REPLACE`.
+<dt>Clause Ordering</dt>
+<dd>`FROM` clause *must* come *before* an *action* clause like `DELETE`, `MOVE`, `INSERT`, `REPLACE`</dd>
+<dd>
 - Incorrect: UPDATE, REPLACE, FROM, as in `UPDATE FILE "file.py" REPLACE FUNCTION "__init__" FROM CLASS "A"`
 - Correct  : UPDATE, FROM, REPLACE, as in `UPDATE CLASS "A" FROM FILE "file.py" REPLACE FUNCTION "__init__"`
-</clause-ordering>
+</dd>
 
-<action-clause-without-main-clause>
-# Any *action* clause like `DELETE`, `MOVE`, `INSERT` etc *MUST* be preceded by its main clause (`UPDATE`).
+<dt>Action clause without main clause</dt>
+<dd>Any *action* clause like `DELETE`, `MOVE`, `INSERT` etc *MUST* be preceded by its main clause (`UPDATE`)</dd>
+<dd>
 - Incorrect: `UPDATE FILE "file.py" DELETE LINE "print(a)"; DELETE LINE "print(b)";`
 - Correct: `UPDATE FILE "file.py" DELETE LINE "print(a)"; UPDATE FILE "file.py" DELETE LINE "print(b)";`
-</action-clause-without-main-clause>
+</dd>
 
-<triple-backtick>
-# When using *triple backticks*, you *MUST* pair *every single backtick* with a preeding backslash (total of 3 pairs of backslash-backtick).
+<dt>Triple Backtick</dt>
+<dd>When using *triple backticks*, you *MUST* pair *every single backtick* with a preeding backslash (total of 3 pairs of backslash-backtick)</dd>
+<dd>
 - Incorrect (*without* a preceding \\ for each backtick): `WITH CONTENT '''@0:Bash: ``` rm *.py ```''';`
 - Correct (*every* single backtick is preceded by a "\\"): `WITH CONTENT '''@0:Bash: \\`\\`\\` rm *.py \\`\\`\\`''';`
-</triple-backtick>
-</avoiding-common-mistakes>
+</dd>
+
+</dl>
 
 {lazy_prompt}
 ONLY EVER RETURN CODE IN *CEDARScript block*!
@@ -957,7 +1041,7 @@ WITH CONTENT '''
 UPDATE FUNCTION ".calc1"
   FROM FILE "file.py"
 REPLACE BODY WITH CASE
-  WHEN REGEX r"self\\.instance_var" THEN SUB
+  WHEN REGEX r'''self\\.instance_var''' THEN SUB
     r'''self\\.(instance_var)''' -- match and capture the part we need to keep
     r'''\\1''' -- replace the match with the part we need to keep (stored in group 1)
 END;
