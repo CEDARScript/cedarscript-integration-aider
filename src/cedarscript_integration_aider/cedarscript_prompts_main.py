@@ -3,10 +3,10 @@
 from .cedarscript_prompts_base import CEDARScriptPromptsBase
 
 
-class CEDARScriptPromptsGrammar(CEDARScriptPromptsBase):
+class CEDARScriptPromptsMain(CEDARScriptPromptsBase):
 
     def edit_format_name(self):
-        return f"{super().edit_format_name()}-g"
+        return f"{super().edit_format_name()}"
 
     final_remarks = CEDARScriptPromptsBase.final_remarks_brain
 
@@ -59,12 +59,12 @@ first line where the identifier is declared (function signature, etc)
 <dd>Optional specification of new content:
 - <content_literal>: direct text using <relative-indent-level-string>
 - <content_from_segment>: content taken from existing code
-- <filtered_content>: replaces a region by filtering it
+- <line_filter>: filters input lines
 </dd>
 
-<dt>action-mos   : ( <update_delete_region_clause> | MOVE <marker_or_segment> <update_move_clause_destination> | <insert_clause> WITH <contents> | <replace_region_clause> | WITH (<contents> | <filtered_content>) )</dt>
+<dt>action-mos   : ( <update_delete_region_clause> | MOVE <marker_or_segment> <update_move_clause_destination> | <insert_clause> WITH <contents> | <replace_region_clause> | WITH (<contents> | <line_filter>) )</dt>
 <dd>Use when update-target is a FILE</dd>
-<dt>action-region: ( <update_delete_region_clause> | MOVE <region_field>      <update_move_clause_destination> | <insert_clause> WITH <contents> | <replace_region_clause> | WITH (<contents> | <filtered_content>))</dt>
+<dt>action-region: ( <update_delete_region_clause> | MOVE <region_field>      <update_move_clause_destination> | <insert_clause> WITH <contents> | <replace_region_clause> | WITH (<contents> | <line_filter>))</dt>
 <dd>Use when update-target is an <identifier_matcher></dd>
 
 </dl>
@@ -209,17 +209,17 @@ OFFSET n: skips n matches, thus specifies the (n+1)-th match;
 <dt>content_from_segment: [singlefile_clause] <marker_or_segment> [relative_indentation]</dt>
 <dd></dd>
 
-<dt>filtered_content: (<case_stmt> | <ed_stmt>)</dt>
-<dd>Sends the lines found in the specified scope to a filter and replace the original lines with the result</dd>
+<dt>line_filter: (<case_stmt> | <ed_stmt>)</dt>
+<dd>Sends input lines to a filter for transformation and returns the resulting lines</dd>
 
 <dt>ed_stmt: ED r'''<string>'''</dt>
-<dd>Executes a *GNU ed* (the UNIX line editor) script to filter only the lines found in the specified scope</dd>
+<dd>Executes a *GNU ed* (the UNIX line editor) script to transform input lines</dd>
 
 <dt>case_stmt: CASE WHEN <line_matcher> THEN <case_action></dt>
-<dd>This is the versatile `CASE WHEN...THEN` content filter. \
-Filters each line of the region according to `WHEN...THEN` pairs:</dd>
-<dd>WHEN: Allows you to choose which line *matcher* to use:</dd>
-<dd>THEN: Allows you to choose which *action* to take for its matched line</dd>
+<dd>This is the reliable and versatile `CASE WHEN...THEN` line filter. \
+Filters each input line according to `WHEN...THEN` pairs:</dd>
+<dd>WHEN: A <line_matcher></dd>
+<dd>THEN: Allows you to choose which *action* to take for its matched lines</dd>
 <dd><content_literal> or <content_from_segment>: Replace with text (cannot use regex capture groups)</dd>
 
 <dt>loop_control: (CONTINUE | BREAK)</dt>
