@@ -111,8 +111,8 @@ first line where the identifier is declared (function signature, etc)
 - <string>: its *contents*, if it's unambiguous (don't use line content if the line appears multiple times);
 - <context-relative-line-number>: This can help if other types failed;
 - REGEX: a regular expression pattern; *MUST* use a raw string (one that starts with r''')
-- PREFIX: a string that matches from start of line;
-- SUFFIX: a string that matches from end of line;
+- PREFIX: a string that *begins* with a prefix (anchored to the start);
+- SUFFIX: a string that *ends* wiht a suffix (anchored to the end);
 - INDENT LEVEL: line has specific indent level 
 - EMPTY: an empty line
 </dd>
@@ -371,10 +371,10 @@ Consider the files in the codebase above and see the examples below.
 <dd>
 UPDATE FILE "Makefile"
 REPLACE WHOLE WITH CASE
-  WHEN PREFIX '''.PHONY''' THEN SUB
+  WHEN LINE PREFIX '''.PHONY''' THEN SUB
     r'''version'''
     r'''version v'''
-  WHEN PREFIX '''version''' THEN SUB
+  WHEN LINE PREFIX '''version''' THEN SUB
     r'''version'''
     r'''version v'''
 END;
@@ -383,10 +383,10 @@ END;
 -- We can use a regex group reference (\\1) to be even more concise
 UPDATE FILE "Makefile"
 REPLACE WHOLE WITH CASE
-  WHEN PREFIX '''.PHONY''' THEN SUB
+  WHEN LINE PREFIX '''.PHONY''' THEN SUB
     r'''(version)'''
     r'''\\1 v'''
-  WHEN PREFIX '''version''' THEN SUB
+  WHEN LINE PREFIX '''version''' THEN SUB
     r'''^(version)'''
     r'''\\1 v'''
 END;
@@ -503,7 +503,7 @@ END;
 UPDATE CLASS "A"
   FROM FILE "a2.py"
 REPLACE WHOLE WITH CASE
-  WHEN PREFIX '''#''' THEN CONTINUE
+  WHEN LINE PREFIX '''#''' THEN CONTINUE
   WHEN REGEX r'''a2x''' THEN SUB
     r'''a2x'''
     r'''a2'''
@@ -734,7 +734,7 @@ To disambiguate an identifier:
 <dd>
 Never use ambiguous references. When selecting reference points, follow this priority:
 1. For identifiers, use parent chains: "MyClass.my_method"
-2. For lines, prefer REGEX or PREFIX line matchers
+2. For lines, prefer REGEX line matchers (if that fails, try PREFIX)
 3. Use OFFSET 0 for first match
 </dd>
 
@@ -874,7 +874,7 @@ WITH CONTENT '''
 UPDATE METHOD "MyClass.anotherFunction"
   FROM FILE "file.py"
 REPLACE BODY WITH CASE
-  WHEN PREFIX '''#''' THEN CONTINUE
+  WHEN LINE PREFIX '''#''' THEN CONTINUE
   WHEN REGEX r'''self\\.myFirstFunction''' THEN SUB
     r'''self\\.(myFirstFunction)''' -- match and capture the part we need to keep
     r'''\\1''' -- replace the match with the part we need to keep (stored in group 1)
@@ -1122,7 +1122,7 @@ WITH CONTENT '''
 UPDATE FUNCTION "A.calc2"
   FROM FILE "file.py"
 REPLACE BODY WITH CASE
-  WHEN PREFIX '''# I'm a bad''' THEN REMOVE
+  WHEN LINE PREFIX '''# I'm a bad''' THEN REMOVE
   WHEN REGEX r'''self\\.calc1''' THEN SUB
     r'''self\\.calc1\\('''
     r'''calc1(self.instance_var,'''
@@ -1175,7 +1175,7 @@ WITH CONTENT'''
 UPDATE FUNCTION "calc2"
   FROM FILE "file.py"
 REPLACE WHOLE WITH CASE
-  WHEN PREFIX '''def calc2''' THEN CONTENT '''
+  WHEN LINE PREFIX '''def calc2''' THEN CONTENT '''
 @0:def calc2(a, base_tax: float = 1.3):
 '''
   WHEN REGEX r'''calc1\\(''' THEN SUB
@@ -1198,9 +1198,9 @@ class A:
         else:
             return list(
                 self._calc(
-                    self._candidate(
+                    my_list.include(self._candidate(
                         a, "string 1", 4
-                    )
+                    ))
                     for index, item in enumerate(a.the_elements)
                 )
             )
@@ -1232,7 +1232,7 @@ INSERT BEFORE CLASS "A"
 UPDATE FUNCTION "_candidate"
   FROM FILE "file.py"
 REPLACE WHOLE WITH CASE
-  WHEN PREFIX '''def _candidate(self''' THEN SUB
+  WHEN LINE PREFIX '''def _candidate(self''' THEN SUB
     r'''(def _candidate\\()self, '''
     r'''\\1'''
 END;
@@ -1241,7 +1241,7 @@ END;
 UPDATE METHOD "_check"
   FROM FILE "file.py"
 REPLACE WHOLE WITH CASE
-  WHEN PREFIX '''self._candidate''' THEN SUB
+  WHEN REGEX r'''self\\._candidate''' THEN SUB
     r'''self\\.(_candidate)'''
     r'''\\1'''
 END;
@@ -1260,9 +1260,9 @@ class A:
         else:
             return list(
                 self._calc(
-                    self._candidate(
+                    my_list.include(self._candidate(
                         a, "string 1", 4
-                    )
+                    )))
                     for index, item in enumerate(a.the_elements)
                 )
             )
@@ -1295,7 +1295,7 @@ INSERT BEFORE CLASS "A"
 UPDATE FUNCTION "_candidate"
   FROM FILE "file.py"
 REPLACE WHOLE WITH CASE
-  WHEN PREFIX '''def _candidate(self''' THEN SUB
+  WHEN LINE PREFIX '''def _candidate(self''' THEN SUB
     r'''(def _candidate\\()self, '''
     r'''\\1'''
 END;
@@ -1305,7 +1305,7 @@ END;
 UPDATE METHOD "A._check"
   FROM FILE "file.py"
 REPLACE BODY WITH CASE
-  WHEN LINE PREFIX '''self._candidate''' THEN SUB
+  WHEN REGEX r'''self\\._candidate''' THEN SUB
     r'''self\\.(_candidate)'''
     r'''\\1'''
 END;
