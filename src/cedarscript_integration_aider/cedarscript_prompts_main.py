@@ -11,8 +11,8 @@ class CEDARScriptPromptsMain(CEDARScriptPromptsBase):
     final_remarks = CEDARScriptPromptsBase.final_remarks_brain
 
     edit_format_training = """## CEDARScript Quick Reference Guide
-It's a *SQL-like* language used to express code transformations (via DDL and DML Write commands) and to \
-help an LLM examine and understand the codebase (via DML Read-Only command).
+It's a *SQL-like* language used to express code transformations (via DDL and DML Write commands) and
+to help an LLM examine and understand the codebase (via DML Read-Only command).
 <core-commands>
 <DML>
 # Read-only command
@@ -46,7 +46,7 @@ help an LLM examine and understand the codebase (via DML Read-Only command).
 <dt>update-target: [<identifier_matcher> FROM] FILE "<path>"</dt>
 <dd>Specifies what to update:
 - Direct file update (FILE "path"); Sets *reference point* for *vertical positioning* to the first line in the file.
-- A specific <identifier_matcher> FROM FILE "path"; Sets *reference point* for *vertical positioning* to the \
+- A specific <identifier_matcher> FROM FILE "path"; Sets *reference point* for *vertical positioning* to the 
 first line where the identifier is declared (function signature, etc)
 </dd>
 <dd>Sets *reference point* for *vertical positioning* (Context-Relative Line Numbers)</dd>
@@ -79,8 +79,7 @@ first line where the identifier is declared (function signature, etc)
 <dd>Sets *reference point* for *vertical positioning* to the first line in the file</dd>
 
 2. <dt>UPDATE <identifier_matcher> FROM FILE "<path>" <action-region></dt>
-<dd>Sets *reference point* for *vertical positioning* to the first line where the identifier is declared \
-(function signature, etc)</dd>
+<dd>Sets *reference point* for *vertical positioning* to the first line where the identifier is declared (function signature, etc)</dd>
 
 3. <dt>UPDATE PROJECT REFACTOR LANGUAGE "<string>" WITH PATTERN '''<string>''' [WITH GOAL '''<string>''']</dt>
 <dd>Only languages "Rope" (for Python codebases) and "Comby" (for any codebase) are supported</dd>
@@ -106,9 +105,8 @@ first line where the identifier is declared (function signature, etc)
 <dt>marker: (<line_with_offset> | <identifier_matcher>)</dt>
 <dd></dd>
 
-<dt>line_matcher: [LINE] ('''<string>''' | <context-relative-line-number> | \
-REGEX r'''<regex>''' | PREFIX '''<string>''' | SUFFIX '''<string>''' | INDENT LEVEL <integer> | EMPTY)</dt>
-<dd>Points to specific line. For all comparisons below, the matcher *only sees* a stripped version of the line \
+<dt>line_matcher: [LINE] ('''<string>''' | <context-relative-line-number> | REGEX r'''<regex>''' | PREFIX '''<string>''' | SUFFIX '''<string>''' | INDENT LEVEL <integer> | EMPTY)</dt>
+<dd>Points to specific line. For all comparisons below, the matcher *only sees* a stripped version of the line
 (that is, after stripping leading and trailing whitespace characters)</dd>
 <dd>Possible arguments:
 - <string>: its *stripped contents*, if it's unambiguous (don't use line content if the line appears multiple times);
@@ -223,7 +221,7 @@ OFFSET n: skips n matches, thus specifies the (n+1)-th match;
 <dd>Executes a *GNU ed* (the UNIX line editor) script to transform input lines</dd>
 
 <dt>case_stmt: CASE WHEN <line_matcher> THEN <case_action></dt>
-<dd>This is the reliable and versatile `CASE WHEN...THEN` line filter. \
+<dd>This is the reliable and versatile `CASE WHEN...THEN` line filter.
 Filters each input line according to `WHEN...THEN` pairs:</dd>
 <dd>WHEN: A <line_matcher></dd>
 <dd>THEN: Allows you to choose which *action* to take for its matched lines</dd>
@@ -253,7 +251,7 @@ Filters each input line according to `WHEN...THEN` pairs:</dd>
 <dd>The CEDARScript runtime will handle the actual formatting and indentation in the target code file</dd>
 <dt>relative-indent-prefix: @<relative-indent-level>:</dt>
 <dt>relative-indent-level: integer</dt>
-<dd>Determines *horizontal positioning* as a *relative* indent *level* compared to the *horizontal positioning reference point* \
+<dd>Determines *horizontal positioning* as a *relative* indent *level* compared to the *horizontal positioning reference point*
 (the reference point is the <marker> chosen for the <update-action> (MOVE|INSERT|REPLACE))</dd>
 <dd>The relative indent level *MUST* change logically with code structure:
 - Increment when entering a nested block (if/for/while/try etc...);
@@ -264,12 +262,12 @@ Filters each input line according to `WHEN...THEN` pairs:</dd>
 1: one more indent level than reference point;
 -1: one *less* indent level than reference point;
 </dd>
-<dd>NOTE: If you get `E999 IndentationError` message or any other indentation error, check that your relative indent levels \
+<dd>NOTE: If you get `E999 IndentationError` message or any other indentation error, check that your relative indent levels 
 follow these rules</dd>
 
 ## Vertical Positioning: Context-Relative Line Numbers
 <dt>context-relative-line-number: integer</dt>
-<dd>Determines *vertical positioning*. Represents the relative line number compared to the *vertical positioning reference point* \
+<dd>Determines *vertical positioning*. Represents the relative line number compared to the *vertical positioning reference point*
 (the reference point is the target chosen for the <update-target> - either the file itself or a specific <identifier_matcher> in it)</dd>
 <dd>Number 1 points to the *first* line of its reference point; 2 points to the second, ...</dd>
 <dd>Number 0 points to the line that comes *BEFORE* its reference point; -1 points to 2 lines before, ...</dd>
@@ -435,7 +433,7 @@ WITH CONTENT '''
 </dd>
 
 <dt file="a1.py">Disambiguate using parent chains</dt>
-<dd>We cannot simply use `FUNCTION "a_def2"`, as it matches all 3 functions with that name. \
+<dd>We cannot simply use `FUNCTION "a_def2"`, as it matches all 3 functions with that name.
 We should use the `parent chain` to easily disambiguate it:</dd>
 <dd>
 -- Target the top-level a_def2
@@ -486,7 +484,7 @@ UPDATE CLASS "A"
   FROM FILE "a2.py"
 REPLACE WHOLE WITH CASE
   WHEN REGEX r'''a1x''' THEN SUB
-    r'''\(a1x\)'''
+    r'''\\(a1x\\)'''
     r'''(a1)'''
 END;
 </dd>
@@ -497,7 +495,7 @@ UPDATE CLASS "A"
   FROM FILE "a2.py"
 REPLACE WHOLE WITH CASE
   WHEN REGEX r'''a2x''' THEN SUB
-    r'''\(a2x\)'''
+    r'''\\(a2x\\)'''
     r'''(a2)'''
 END;
 </dd>
@@ -547,7 +545,7 @@ g/^$/,/[^$]/-j
 UPDATE METHOD "anotherFunction"
 FROM FILE "a3.py"
 REPLACE BODY WITH ED r'''
-g/^\s*#/d
+g/^\\s*#/d
 ''';
 </dd>
 
@@ -708,14 +706,10 @@ Super careful to avoid syntax errors.</step>
 
 - Pay attention to which filenames the user wants you to edit, especially if they are asking you to create a new file;
 - Use the exact file path for the file that needs to be changed (remember you can only change files that the user added to the chat!);
-- Each CEDARScript command is applied in the same order as they appear. If a command fails to be applied, all commands \
-before it were correctly applied (don't retry those!). Once a command is applied on a file, the next command will see \
-the update version of that file, with all changes that were applied by earlier commands;
-- It's crucial to strive to provide *as concise and small as possible*, targeted CEDARScript commands that each \
-change a given aspect of the program, so that humans can easily understand what's changing;
+- Each CEDARScript command is applied in the same order as they appear. If a command fails to be applied, all commands before it were correctly applied (don't retry those!). Once a command is applied on a file, the next command will see
+the update version of that file, with all changes that were applied by earlier commands; - It's crucial to strive to provide *as concise and small as possible*, targeted CEDARScript commands that each change a given aspect of the program, so that humans can easily understand what's changing;
 - Try *HARD* to minimize the number of unchanged lines in a CEDARScript command and to have a very *concise* script;
-- To move code within a file or identifier (class, method or function), you *MUST* use the `UPDATE ... MOVE ...` construct \
-to minimize script size (DON'T use `WITH CONTENT`);
+- To move code within a file or identifier (class, method or function), you *MUST* use the `UPDATE ... MOVE ...` construct to minimize script size (DON'T use `WITH CONTENT`);
 <IMPORTANT>
 1. You wmust try the alternative form `UPDATE CLASS..MOVE FUNCTION` (instead of `UPDATE FUNCTION..MOVE WHOLE`) if the latter fails
 2. If there are MULTIPLE identifiers with the same name, you *MUST* choose an appropriate reference that is unambiguous! 
@@ -750,8 +744,7 @@ Correct: Start counting at the first line where the function/method's signature 
 <dt>content_literal: relative-indent-level</dt>
 <dd>
 Incorrect: Using `REPLACE LINE` and providing <content_literal> a non-zero <relative-indent-level>
-Correct: When using `REPLACE LINE`, remember that the *horizontal positioning reference point* is the LINE iteself, \
-so we need to use 0 as the <relative-indent-level> so that the line keeps its original indent level.
+Correct: When using `REPLACE LINE`, remember that the *horizontal positioning reference point* is the LINE iteself, so we need to use 0 as the <relative-indent-level> so that the line keeps its original indent level.
 </dd>
 
 <dt>Turning method into top-level function</dt>
