@@ -242,7 +242,7 @@ Filters each input line according to `WHEN...THEN` pairs:</dd>
 UPDATE FUNCTION "function_name"
   FROM FILE "file.py"
 REPLACE WHOLE WITH CASE
-  WHEN REGEX r'''def function_name''' THEN SUB
+  WHEN REGEX r'''def function_name\\(''' THEN SUB
     r'''def function_name\\(self,'''
     r'''def function_name(replacement_param: str,'''
 END;
@@ -909,8 +909,8 @@ UPDATE METHOD "MyClass.anotherFunction"
   FROM FILE "file.py"
 REPLACE BODY WITH CASE
   WHEN LINE PREFIX '''#''' THEN CONTINUE
-  WHEN REGEX r'''self\\.myFirstFunction''' THEN SUB
-    r'''self\\.(myFirstFunction)''' -- capture the part we need to keep
+  WHEN REGEX r'''self\\.myFirstFunction\\(''' THEN SUB
+    r'''self\\.(myFirstFunction\\()''' -- capture the part we need to keep
     r'''\\1''' -- replace the match with the part we need to keep (was captured in group 1)
 END;
 {fence[1]}
@@ -1081,7 +1081,7 @@ END;
 UPDATE METHOD "A.calc2"
   FROM FILE "file.py"
 REPLACE BODY WITH CASE
-  WHEN REGEX r'''self\\.calc1''' THEN SUB
+  WHEN REGEX r'''self\\.calc1\\(''' THEN SUB
     r'''(self\\.)(calc1\\()'''
     r'''\\2\\1instance_var, '''
 END;
@@ -1154,7 +1154,7 @@ UPDATE FUNCTION "A.calc2"
   FROM FILE "file.py"
 REPLACE BODY WITH CASE
   WHEN REGEX r'''^# I'm a bad''' THEN REMOVE
-  WHEN REGEX r'''self\\.calc1''' THEN SUB
+  WHEN REGEX r'''self\\.calc1\\(''' THEN SUB
     r'''(self\\.)(calc1\\()'''
     r'''\\2\\1instance_var, '''
 END;
@@ -1206,7 +1206,7 @@ WITH CONTENT'''
 UPDATE FUNCTION "calc2"
   FROM FILE "file.py"
 REPLACE WHOLE WITH CASE
-  WHEN REGEX r'''def calc2''' THEN SUBS
+  WHEN REGEX r'''def calc2\\(''' THEN SUBS
     r'''def calc2\\(a''' -- match only the part of the line to be replaced
     r'''def calc2(a, base_tax: float = 1.3''' -- replace only the matched part with the desired addition, so that we finally get `def calc2(a, base_tax: float = 1.3):`
   WHEN REGEX r'''calc1\\(''' THEN SUB
@@ -1263,7 +1263,7 @@ INSERT BEFORE CLASS "A"
 UPDATE FUNCTION "_candidate"
   FROM FILE "file.py"
 REPLACE WHOLE WITH CASE
-  WHEN REGEX r'''def _candidate''' THEN SUB
+  WHEN REGEX r'''def _candidate\\(''' THEN SUB
     r'''def _candidate\\(self,'''
     r'''def _candidate('''
 END;
@@ -1272,8 +1272,8 @@ END;
 UPDATE METHOD "_check"
   FROM FILE "file.py"
 REPLACE WHOLE WITH CASE
-  WHEN REGEX r'''self\\._candidate''' THEN SUB
-    r'''self\\.(_candidate)'''
+  WHEN REGEX r'''self\\._candidate\\(''' THEN SUB
+    r'''self\\.(_candidate\\()'''
     r'''\\1'''
 END;
 {fence[1]}""",
@@ -1326,7 +1326,7 @@ INSERT BEFORE CLASS "A"
 UPDATE FUNCTION "_candidate"
   FROM FILE "file.py"
 REPLACE WHOLE WITH CASE
-  WHEN REGEX r'''def _candidate''' THEN SUB
+  WHEN REGEX r'''def _candidate\\(''' THEN SUB
     r'''def _candidate\\(self,'''
     r'''def _candidate('''
 END;
@@ -1336,8 +1336,8 @@ END;
 UPDATE METHOD "A._check"
   FROM FILE "file.py"
 REPLACE BODY WITH CASE
-  WHEN REGEX r'''self\\._candidate''' THEN SUB
-    r'''self\\.(_candidate)'''
+  WHEN REGEX r'''self\\._candidate\\(''' THEN SUB
+    r'''self\\.(_candidate\\()'''
     r'''\\1'''
 END;
 {fence[1]}""",

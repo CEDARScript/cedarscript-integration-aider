@@ -318,7 +318,7 @@ def _get_attempt_limit_and_normalized_counts(benchmark_run: dict[str, AiderTestR
     # Find the negative value (if any) and its count
     negative_value = next((k for k in result.keys() if k < 0), None)
     if negative_value is None:
-        return None, result
+        return 0, result
     # Get the count of tests with this negative value
     max_failed_attempts = result[negative_value]
     # Remove the original negative value from counter
