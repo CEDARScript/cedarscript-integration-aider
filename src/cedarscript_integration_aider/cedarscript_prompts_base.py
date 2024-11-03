@@ -265,7 +265,8 @@ Log the value of now, and then call now_changed with now as argument
 Here's the CEDARScript script:
 
 {fence[0]}CEDARScript
--- Import the logging module:
+-- Import the logging module.
+-- `BEFORE LINE PREFIX '''import''' OFFSET 0` means: before the first line that begins with the word import.
 UPDATE FILE "file.py"
 INSERT BEFORE LINE PREFIX '''import ''' OFFSET 0
 WITH CONTENT '''

@@ -106,15 +106,18 @@ first line where the identifier is declared (function signature, etc)
 <dt>marker: (<line_with_offset> | <identifier_matcher>)</dt>
 <dd></dd>
 
-<dt>line_matcher: [LINE] ('''<string>''' | <context-relative-line-number> | REGEX r'''<regex>''' | PREFIX '''<string>''' | SUFFIX '''<string>''' | INDENT LEVEL <integer> | EMPTY)</dt>
-<dd>Points to specific line via:
-- <string>: its *contents*, if it's unambiguous (don't use line content if the line appears multiple times);
+<dt>line_matcher: [LINE] ('''<string>''' | <context-relative-line-number> | \
+REGEX r'''<regex>''' | PREFIX '''<string>''' | SUFFIX '''<string>''' | INDENT LEVEL <integer> | EMPTY)</dt>
+<dd>Points to specific line. For all comparisons below, the matcher *only sees* a stripped version of the line \
+(that is, after stripping leading and trailing whitespace characters)</dd>
+<dd>Possible arguments:
+- <string>: its *stripped contents*, if it's unambiguous (don't use line content if the line appears multiple times);
 - <context-relative-line-number>: This can help if other types failed;
-- REGEX: a regular expression pattern; *MUST* use a raw string (one that starts with r''')
-- PREFIX: a string that *begins* with a prefix (anchored to the start);
-- SUFFIX: a string that *ends* wiht a suffix (anchored to the end);
+- REGEX: a regular expression pattern matching the stripped line; *MUST* use a raw string (one that starts with r''')
+- PREFIX: matches if the stripped line *begins* with a prefix (anchored to the start);
+- SUFFIX: matches if the stripped line *ends* wiht a suffix (anchored to the end);
 - INDENT LEVEL: line has specific indent level 
-- EMPTY: an empty line
+- EMPTY: matches if the stripped line is empty
 </dd>
 
 <dt>line_with_offset: <line_matcher> [OFFSET <offset>]</dt>
@@ -371,11 +374,11 @@ Consider the files in the codebase above and see the examples below.
 <dd>
 UPDATE FILE "Makefile"
 REPLACE WHOLE WITH CASE
-  WHEN LINE PREFIX '''.PHONY''' THEN SUB
+  WHEN REGEX r'''^\\.PHONY''' THEN SUB
     r'''version'''
     r'''version v'''
-  WHEN LINE PREFIX '''version''' THEN SUB
-    r'''version'''
+  WHEN REGEX r'''^version''' THEN SUB
+    r'''^version'''
     r'''version v'''
 END;
 </dd>
@@ -383,10 +386,10 @@ END;
 -- We can use a regex group reference (\\1) to be even more concise
 UPDATE FILE "Makefile"
 REPLACE WHOLE WITH CASE
-  WHEN LINE PREFIX '''.PHONY''' THEN SUB
+  WHEN REGEX r'''^\\.PHONY''' THEN SUB
     r'''(version)'''
     r'''\\1 v'''
-  WHEN LINE PREFIX '''version''' THEN SUB
+  WHEN REGEX r'''^version''' THEN SUB
     r'''^(version)'''
     r'''\\1 v'''
 END;
@@ -503,7 +506,7 @@ END;
 UPDATE CLASS "A"
   FROM FILE "a2.py"
 REPLACE WHOLE WITH CASE
-  WHEN LINE PREFIX '''#''' THEN CONTINUE
+  WHEN REGEX r'''^#''' THEN CONTINUE
   WHEN REGEX r'''a2x''' THEN SUB
     r'''a2x'''
     r'''a2'''
@@ -857,17 +860,14 @@ replaces the whole line with the NEW version we want: `def myFirstFunction(self`
 */
 UPDATE FUNCTION "myFirstFunction"
   FROM FILE "file.py"
-REPLACE LINE PREFIX '''def myFirstFunction(self'''
-WITH CONTENT '''
-@0:def myFirstFunction(instance_var_1: str, name: str, age: int):
-''';
-/* Match the line prefix with OLD content and replace the whole line with the NEW content we want
-UPDATE FUNCTION "myFirstFunction"
-  FROM FILE "file.py"
-REPLACE LINE PREFIX '''return a + 5 + 1 + len(self'''
-WITH CONTENT '''
-@0:return a + 5 + 1 + len(instance_var_1) * 7
-''';
+REPLACE WHOLE WITH CASE
+  WHEN REGEX r'''^def myFirstFunction''' THEN SUB
+    r'''^(def myFirstFunction\\()self,\\s*'''
+    r'''\\1instance_var_1: str, '''
+  WHEN REGEX r'''self\\.instance_var_1''' THEN SUB
+    r'''self\\.(instance_var_1)'''
+    r'''\\1'''
+END;
 
 -- 3. Update ALL call sites of the method `myFirstFunction` to call the new top-level function with the same name, passing `instance_var_1` as argument
 -- Make sure to search for the OLD content and replace it with the NEW content we want
@@ -1034,15 +1034,12 @@ INSERT BEFORE CLASS "A"
 -- Make sure to search for the OLD content (`def calc1(self`) and replace it with the NEW content we want (`def calc1(instance_var`)
 UPDATE FUNCTION ".calc1"
   FROM FILE "file.py"
-REPLACE LINE PREFIX '''def calc1'''
-WITH CONTENT '''
-@0:def calc1(instance_var: int, a):
-''';
-UPDATE FUNCTION ".calc1"
-  FROM FILE "file.py"
-REPLACE BODY WITH CASE
+REPLACE WHOLE WITH CASE
+  WHEN REGEX r'''def calc1''' THEN SUB
+    r'''(def calc1\\()self,\\s*''' -- match and capture the part of the old code we need to keep
+    r'''\\1instance_var: int, ''' -- replace the match with the new, desired code
   WHEN REGEX r'''self\\.instance_var''' THEN SUB
-    r'''self\\.(instance_var)''' -- match and capture the part we need to keep
+    r'''self\\.(instance_var)''' -- match and capture the part of the old code we need to keep
     r'''\\1''' -- replace the match with the part we need to keep (stored in group 1)
 END;
 
@@ -1051,8 +1048,8 @@ UPDATE METHOD "A.calc2"
   FROM FILE "file.py"
 REPLACE BODY WITH CASE
   WHEN REGEX r'''self\\.calc1''' THEN SUB
-    r'''self\\.calc1\\('''
-    r'''calc1(self.instance_var,'''
+    r'''(self\\.)(calc1\\()'''
+    r'''\\2\\1instance_var, '''
 END;
 {fence[1]}""",
         ),
@@ -1122,15 +1119,15 @@ WITH CONTENT '''
 UPDATE FUNCTION "A.calc2"
   FROM FILE "file.py"
 REPLACE BODY WITH CASE
-  WHEN LINE PREFIX '''# I'm a bad''' THEN REMOVE
+  WHEN REGEX r'''^# I'm a bad''' THEN REMOVE
   WHEN REGEX r'''self\\.calc1''' THEN SUB
-    r'''self\\.calc1\\('''
-    r'''calc1(self.instance_var,'''
+    r'''(self\\.)(calc1\\()'''
+    r'''\\2\\1instance_var, '''
 END;
 
--- 4. Delete the remaining bad line (it's in the other method)
+-- 4. Delete the single remaining bad line (it's in the other method)
 UPDATE FILE "file.py"
-DELETE LINE PREFIX '''# I'm a bad'''; -- Removes the whole line that starts with that prefix
+DELETE LINE REGEX r'''^# I'm a bad'''; -- Removes the whole line that starts with that prefix
 {fence[1]}""",
         ),
     dict(
@@ -1175,12 +1172,12 @@ WITH CONTENT'''
 UPDATE FUNCTION "calc2"
   FROM FILE "file.py"
 REPLACE WHOLE WITH CASE
-  WHEN LINE PREFIX '''def calc2''' THEN CONTENT '''
+  WHEN REGEX r'''^def calc2''' THEN CONTENT '''
 @0:def calc2(a, base_tax: float = 1.3):
 '''
   WHEN REGEX r'''calc1\\(''' THEN SUB
     r'''(calc1\\()'''
-    r'''\\1base_tax,'''
+    r'''\\1base_tax, '''
 END;
 {fence[1]}""",
         ),
@@ -1232,8 +1229,8 @@ INSERT BEFORE CLASS "A"
 UPDATE FUNCTION "_candidate"
   FROM FILE "file.py"
 REPLACE WHOLE WITH CASE
-  WHEN LINE PREFIX '''def _candidate(self''' THEN SUB
-    r'''(def _candidate\\()self, '''
+  WHEN REGEX r'''def _candidate''' THEN SUB
+    r'''(def _candidate\\()self,\\s*'''
     r'''\\1'''
 END;
 
@@ -1295,8 +1292,8 @@ INSERT BEFORE CLASS "A"
 UPDATE FUNCTION "_candidate"
   FROM FILE "file.py"
 REPLACE WHOLE WITH CASE
-  WHEN LINE PREFIX '''def _candidate(self''' THEN SUB
-    r'''(def _candidate\\()self, '''
+  WHEN REGEX r'''def _candidate''' THEN SUB
+    r'''(def _candidate\\()self,\\s*'''
     r'''\\1'''
 END;
 
