@@ -237,26 +237,38 @@ Filters each input line according to `WHEN...THEN` pairs:</dd>
 <dd>SUB: Substitutes <regex> matches with <repl> (regex capture groups enabled: \\1, \\2, etc).
 *CRUCIAL* Example 1: In a function signature, let's replace `self,` with `replacement_param: str,`:
 <example-1>
--- Original (OLD): `def function_name(self, param_to_keep_1: int, param_to_keep_2: str):`
--- Desired  (NEW): `def function_name(replacement_param: str, param_to_keep_1: int, param_to_keep_2: str):`
+-- Original line (OLD): `def function_name(self, param_to_keep_1: int, param_to_keep_2: str):`
+-- Desired line  (NEW): `def function_name(replacement_param: str, param_to_keep_1: int, param_to_keep_2: str):`
 UPDATE FUNCTION "function_name"
   FROM FILE "file.py"
 REPLACE WHOLE WITH CASE
   WHEN REGEX r'''def function_name''' THEN SUB
-    r'''(def function_name\\()self,''' -- capture to regex group 1 the part we want to keep by enclosing it in parenthesis and leave out the part to be replaced: `self,`
-    r'''\\1replacement_param: str,''' -- we recover the part we captured in group 1, i.e. `def function_name(`, and put the replacement: `replacement_param: str,`
+    r'''def function_name\\(self,'''
+    r'''def function_name(replacement_param: str,'''
 END;
 </example-1>
 
 <dl>Examples in terms of substituting <regex> matches with <repl>:
 <dt>Remove self from function signature: transform `def function_name(self, a, b, c):` to `def function_name( a, b, c):`</dt>
-<dd>regex: r'''(def function_name\\()self,''' (notice how the rest of the line ` a, b, c):` isn't matched); repl: r'''\\1''' (only replaces what was matched)</dd>
+<dd>
+regex: r'''def function_name\\(self,''' (notice how the rest of the line ` a, b, c):` isn't matched);
+repl: r'''def function_name(''' (only replaces what was matched)
+</dd>
 <dt>Replace self with a replacement parameter: transform `def function_name(self, a, b, c)` to `def function_name(replacement_param: str, a, b, c)`</dt>
-<dd>regex: r'''(def function_name\\()self,'''; repl: r'''\\1replacement_param: str,'''</dd>
-<dt>Transform `self.calc(a, b, c)` to `calc(self.new_member_arg, a, b, c)`</dt>
-<dd>regex: r'''(self\\.)(calc\\()'''; repl: r'''\\2\\1new_member_arg, '''</dd>
+<dd>
+regex: r'''def function_name\\(self,''';
+repl : r'''def function_name(replacement_param: str,'''
+</dd>
+<dt>Prepend new parameter: Transform `self.calc(a, b, c)` to `calc(self.new_member_arg, a, b, c)`</dt>
+<dd>
+regex: r'''(self\\.)(calc\\()''';
+repl : r'''\\2\\1new_member_arg, '''
+</dd>
 <dt>Replace print calls with logging.info calls</dt>
-<dd>regex: r'''print\\((.*)\\)''';  repl: r'''logging.info(\\1)'''</dd>
+<dd>
+regex: r'''print\\((.*)\\)''';
+repl : r'''logging.info(\\1)'''
+</dd>
 </dl>
 </dd>
 
@@ -782,20 +794,6 @@ After moving the method to the top level (thus turning it into a function), you 
 1. Update the new function to remove ALL references to `self` (i.e. in its function signature and its body)
 2. Update ALL call sites of the moved method throughout the file to remove the `self.` prefix
 </dd>
-<dd>*CRUCIAL* example of WRONG value for <repl> when removig `self` from the function signature:
-<example>
-<dt>Remove self from function signature: transform `def function_name(self, a, b, c):` to `def function_name( a, b, c):`</dt>
-<dd type="WRONG"  >regex: r'''(def function_name\\()self,'''; repl: r'''\\1a, b, c'''</dd>
-<dd type="CORRECT">regex: r'''(def function_name\\()self,'''; repl: r'''\\1'''</dd>
-</example>
-<explanation>
-In the example above, we need to keep `def function_name(`, so we enclose it in parenthesis and leave out the part to remove: `self,`;
-So far so good. But then, in the WRONG line, after restoring captured group 1, the remaining line contents were appended.
-That's wrong because the `regex` expression only matched `def function_name(self,`, so only this part is replaced by the `repl` expression
-(keeping the rest of the line intact: ` a, b, c):`). That's why `repl` must keep in mind it's only replacing what was matched,
-so the CORRECT value of `repl` is r'''\\1'''
-</explanation>
-</dd>
 
 <dt>FROM keyword ordering</dt>
 <dd>FROM keyword must directly be followed by keyword `FILE` or `PROJECT`, never by `CLASS`, `FUNCTION` or other keywords</dd>
@@ -898,11 +896,11 @@ UPDATE FUNCTION "myFirstFunction"
   FROM FILE "file.py"
 REPLACE WHOLE WITH CASE
   WHEN REGEX r'''def myFirstFunction''' THEN SUB
-    r'''(def myFirstFunction\\()self,''' -- capture to regex group 1 the part we want to keep by enclosing it in parenthesis and leave out the part to be replaced: `self,`
-    r'''\\1instance_var_1: str,''' -- we recover the part we captured in group 1, i.e. `def myFirstFunction(`, and put the replacement: `instance_var_1: str,`
+    r'''def myFirstFunction\\(self,'''
+    r'''def myFirstFunction(instance_var_1: str,'''
   WHEN REGEX r'''self\\.instance_var_1''' THEN SUB
-    r'''self\\.(instance_var_1)''' -- save the part we want to keep
-    r'''\\1''' -- recover the part we saved in group 1
+    r'''self\\.(instance_var_1)''' -- capture the part we want to keep, leaving out the part to remove
+    r'''\\1''' -- replace the match with the part we captured in group 1
 END;
 
 -- 3. Update ALL call sites of the method `myFirstFunction` to call the new top-level function with the same name, passing `instance_var_1` as argument
@@ -912,8 +910,8 @@ UPDATE METHOD "MyClass.anotherFunction"
 REPLACE BODY WITH CASE
   WHEN LINE PREFIX '''#''' THEN CONTINUE
   WHEN REGEX r'''self\\.myFirstFunction''' THEN SUB
-    r'''self\\.(myFirstFunction)''' -- match and capture the part we need to keep
-    r'''\\1''' -- replace the match with the part we need to keep (stored in group 1)
+    r'''self\\.(myFirstFunction)''' -- capture the part we need to keep
+    r'''\\1''' -- replace the match with the part we need to keep (was captured in group 1)
 END;
 {fence[1]}
 """,
@@ -1072,11 +1070,11 @@ UPDATE FUNCTION ".calc1"
   FROM FILE "file.py"
 REPLACE WHOLE WITH CASE
   WHEN REGEX r'''def calc1''' THEN SUB
-    r'''(def calc1\\()self,''' -- match and capture the part of the old code we need to keep
-    r'''\\1instance_var: int,''' -- replace the match with the new, desired code
+    r'''def calc1\\(self,''' -- match the part of the line to be replaced
+    r'''def calc1(instance_var: int,''' -- replace the matched part of the line with the new, desired code
   WHEN REGEX r'''self\\.instance_var''' THEN SUB
     r'''self\\.(instance_var)''' -- match and capture the part of the old code we need to keep
-    r'''\\1''' -- replace the match with the part we need to keep (stored in group 1)
+    r'''\\1''' -- replace the match with the part we need to keep (was captured in group 1)
 END;
 
 -- 3. Update ALL call sites of the method `calc1` to call the new top-level function with the same name, passing `instance_var` as argument
@@ -1209,11 +1207,11 @@ UPDATE FUNCTION "calc2"
   FROM FILE "file.py"
 REPLACE WHOLE WITH CASE
   WHEN REGEX r'''def calc2''' THEN SUBS
-    r'''(def calc2\\(a)''' -- match the beginning of the line and capture it: `def calc2(a`
-    r'''\\1, base_tax: float = 1.3''' -- restore the captured group and append desired addition, so that we finally get `def calc2(a, base_tax: float = 1.3):`
+    r'''def calc2\\(a''' -- match only the part of the line to be replaced
+    r'''def calc2(a, base_tax: float = 1.3''' -- replace only the matched part with the desired addition, so that we finally get `def calc2(a, base_tax: float = 1.3):`
   WHEN REGEX r'''calc1\\(''' THEN SUB
-    r'''(calc1\\()'''
-    r'''\\1base_tax, '''
+    r'''calc1\\('''
+    r'''calc1(base_tax, '''
 END;
 {fence[1]}""",
         ),
@@ -1266,8 +1264,8 @@ UPDATE FUNCTION "_candidate"
   FROM FILE "file.py"
 REPLACE WHOLE WITH CASE
   WHEN REGEX r'''def _candidate''' THEN SUB
-    r'''(def _candidate\\()self,'''
-    r'''\\1'''
+    r'''def _candidate\\(self,'''
+    r'''def _candidate('''
 END;
 
 -- 3. Update ALL call sites of the method `_candidate()` to call the new top-level function with the same name
@@ -1329,8 +1327,8 @@ UPDATE FUNCTION "_candidate"
   FROM FILE "file.py"
 REPLACE WHOLE WITH CASE
   WHEN REGEX r'''def _candidate''' THEN SUB
-    r'''(def _candidate\\()self,'''
-    r'''\\1'''
+    r'''def _candidate\\(self,'''
+    r'''def _candidate('''
 END;
 
 -- 3. Update ALL call sites of the method `_candidate()` to call the new top-level function with the same name
