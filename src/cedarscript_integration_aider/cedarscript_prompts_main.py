@@ -249,22 +249,24 @@ END;
 </example-1>
 
 <dl>Examples in terms of substituting <regex> matches with <repl>:
-<dt>Remove self from function signature</dt>
-<dd>regex: r'''(def function_name\\()self,'''; repl: r'''\\1'''</dd>
-<dt>Replace self with replacement_param</dt>
+<dt>Remove self from function signature: transform `def function_name(self, a, b, c):` to `def function_name( a, b, c):`</dt>
+<dd>regex: r'''(def function_name\\()self,''' (notice how the rest of the line ` a, b, c):` isn't matched); repl: r'''\\1''' (only replaces what was matched)</dd>
+<dt>Replace self with a replacement parameter: transform `def function_name(self, a, b, c)` to `def function_name(replacement_param: str, a, b, c)`</dt>
 <dd>regex: r'''(def function_name\\()self,'''; repl: r'''\\1replacement_param: str,'''</dd>
-<dt>Transform `self.calc(arg_to_keep_1, arg_to_keep_2)` to `calc(self.new_member_arg, arg_to_keep_1, arg_to_keep_2)`</dt>
+<dt>Transform `self.calc(a, b, c)` to `calc(self.new_member_arg, a, b, c)`</dt>
 <dd>regex: r'''(self\\.)(calc\\()'''; repl: r'''\\2\\1new_member_arg, '''</dd>
 <dt>Replace print calls with logging.info calls</dt>
 <dd>regex: r'''print\\((.*)\\)''';  repl: r'''logging.info(\\1)'''</dd>
-
 </dl>
 </dd>
 
 <dt>regex: *MUST* use a raw string (one that starts with r''')</dt>
-<dd>Here you can save the part you want to keep in a regex capture group</dd>
+<dd>Matches a part of the line. <CRUCIAL>Only the part that was matched will be replaced by <repl>, keeping the rest of the line intact</CRUCIAL>
+Allows regex capture groups</dd>
 <dt>repl: *MUST* use a raw string (one that starts with r''')</dt>
-<dd>A regex replacement that can recover regex capture groups: \\1, \\2, etc</dd>
+<dd>A replacement that can recover regex capture groups: \\1, \\2, etc.
+*ONLY* replaces the part of the line that was matched by <regex>, keeping the rest of the line intact!
+</dd>
 ),
 
 <dt>update_move_clause_destination: [TO FILE "<path>"] <insert_clause> [relative_indentation]</dt>
@@ -780,6 +782,20 @@ After moving the method to the top level (thus turning it into a function), you 
 1. Update the new function to remove ALL references to `self` (i.e. in its function signature and its body)
 2. Update ALL call sites of the moved method throughout the file to remove the `self.` prefix
 </dd>
+<dd>*CRUCIAL* example of WRONG value for <repl> when removig `self` from the function signature:
+<example>
+<dt>Remove self from function signature: transform `def function_name(self, a, b, c):` to `def function_name( a, b, c):`</dt>
+<dd type="WRONG"  >regex: r'''(def function_name\\()self,'''; repl: r'''\\1a, b, c'''</dd>
+<dd type="CORRECT">regex: r'''(def function_name\\()self,'''; repl: r'''\\1'''</dd>
+</example>
+<explanation>
+In the example above, we need to keep `def function_name(`, so we enclose it in parenthesis and leave out the part to remove: `self,`;
+So far so good. But then, in the WRONG line, after restoring captured group 1, the remaining line contents were appended.
+That's wrong because the `regex` expression only matched `def function_name(self,`, so only this part is replaced by the `repl` expression
+(keeping the rest of the line intact: ` a, b, c):`). That's why `repl` must keep in mind it's only replacing what was matched,
+so the CORRECT value of `repl` is r'''\\1'''
+</explanation>
+</dd>
 
 <dt>FROM keyword ordering</dt>
 <dd>FROM keyword must directly be followed by keyword `FILE` or `PROJECT`, never by `CLASS`, `FUNCTION` or other keywords</dd>
@@ -822,8 +838,8 @@ You MUST write <NOCEDARSCRIPT/> as the last line if:
 1) You just want *show* some CEDARScript commands to the user instead of executing them;
 2) If there are no CEDARScript blocks to execute.
 {shell_cmd_reminder}
-Finally, rephrase and summarize my instructions. Only then, respond. Do so by thinking step by step.
 """
+# TODO Finally, rephrase and summarize my instructions. Only then, respond. Do so by thinking step by step.
 
     example_messages = CEDARScriptPromptsBase.example_messages + [
         dict(
