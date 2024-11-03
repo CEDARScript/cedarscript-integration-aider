@@ -234,10 +234,37 @@ Filters each input line according to `WHEN...THEN` pairs:</dd>
 <dt>case_action: ( <loop_control> | REMOVE [loop_control] | SUB r'''<regex>''' r'''repl''' [loop_control] | INDENT <integer> [loop_control] | (<content_literal> | <content_from_segment>) [loop_control] )
 <dd>CONTINUE: Leaves the line as is and goes to the next</dd>
 <dd>INDENT: Increases or decreases indent level. Only positive or negative integers</dd>
-<dd>SUB: Substitutes <regex> matches with <repl> (regex capture groups enabled: \\1, \\2, etc)</dd>
+<dd>SUB: Substitutes <regex> matches with <repl> (regex capture groups enabled: \\1, \\2, etc).
+*CRUCIAL* Example 1: In a function signature, let's replace `self,` with `replacement_param: str,`:
+<example-1>
+-- Original (OLD): `def function_name(self, param_to_keep_1: int, param_to_keep_2: str):`
+-- Desired  (NEW): `def function_name(replacement_param: str, param_to_keep_1: int, param_to_keep_2: str):`
+UPDATE FUNCTION "function_name"
+  FROM FILE "file.py"
+REPLACE WHOLE WITH CASE
+  WHEN REGEX r'''def function_name''' THEN SUB
+    r'''(def function_name\\()self,''' -- capture to regex group 1 the part we want to keep by enclosing it in parenthesis and leave out the part to be replaced: `self,`
+    r'''\\1replacement_param: str,''' -- we recover the part we captured in group 1, i.e. `def function_name(`, and put the replacement: `replacement_param: str,`
+END;
+</example-1>
+
+<dl>Examples in terms of substituting <regex> matches with <repl>:
+<dt>Remove self from function signature</dt>
+<dd>regex: r'''(def function_name\\()self,'''; repl: r'''\\1'''</dd>
+<dt>Replace self with replacement_param</dt>
+<dd>regex: r'''(def function_name\\()self,'''; repl: r'''\\1replacement_param: str,'''</dd>
+<dt>Transform `self.calc(arg_to_keep_1, arg_to_keep_2)` to `calc(self.new_member_arg, arg_to_keep_1, arg_to_keep_2)`</dt>
+<dd>regex: r'''(self\\.)(calc\\()'''; repl: r'''\\2\\1new_member_arg, '''</dd>
+<dt>Replace print calls with logging.info calls</dt>
+<dd>regex: r'''print\\((.*)\\)''';  repl: r'''logging.info(\\1)'''</dd>
+
+</dl>
+</dd>
+
 <dt>regex: *MUST* use a raw string (one that starts with r''')</dt>
+<dd>Here you can save the part you want to keep in a regex capture group</dd>
 <dt>repl: *MUST* use a raw string (one that starts with r''')</dt>
-<dd>A regex replacement that can reference regex capture groups: \\1, \\2, etc</dd>
+<dd>A regex replacement that can recover regex capture groups: \\1, \\2, etc</dd>
 ),
 
 <dt>update_move_clause_destination: [TO FILE "<path>"] <insert_clause> [relative_indentation]</dt>
@@ -848,18 +875,18 @@ INSERT BEFORE CLASS "MyClass"
   RELATIVE INDENTATION 0; -- the block of code being moved wil start at the same indentation as the 'reference mark'
 
 -- 2. Update the copied function to remove references to `self`, now declaring `instance_var_1` as parameter
-/* Match the line with the prefix that contains the OLD version of the line (`def myFirstFunction(self`) and
-replaces the whole line with the NEW version we want: `def myFirstFunction(self`
+/* Match the line with the prefix that contains the OLD version of the line (`def myFirstFunction(self,`) and
+replaces the whole line with the NEW version we desire: `def myFirstFunction(instance_var_1: str,`
 */
 UPDATE FUNCTION "myFirstFunction"
   FROM FILE "file.py"
 REPLACE WHOLE WITH CASE
-  WHEN REGEX r'''^def myFirstFunction''' THEN SUB
-    r'''^(def myFirstFunction\\()self,\\s*'''
-    r'''\\1instance_var_1: str, '''
+  WHEN REGEX r'''def myFirstFunction''' THEN SUB
+    r'''(def myFirstFunction\\()self,''' -- capture to regex group 1 the part we want to keep by enclosing it in parenthesis and leave out the part to be replaced: `self,`
+    r'''\\1instance_var_1: str,''' -- we recover the part we captured in group 1, i.e. `def myFirstFunction(`, and put the replacement: `instance_var_1: str,`
   WHEN REGEX r'''self\\.instance_var_1''' THEN SUB
-    r'''self\\.(instance_var_1)'''
-    r'''\\1'''
+    r'''self\\.(instance_var_1)''' -- save the part we want to keep
+    r'''\\1''' -- recover the part we saved in group 1
 END;
 
 -- 3. Update ALL call sites of the method `myFirstFunction` to call the new top-level function with the same name, passing `instance_var_1` as argument
@@ -1029,8 +1056,8 @@ UPDATE FUNCTION ".calc1"
   FROM FILE "file.py"
 REPLACE WHOLE WITH CASE
   WHEN REGEX r'''def calc1''' THEN SUB
-    r'''(def calc1\\()self,\\s*''' -- match and capture the part of the old code we need to keep
-    r'''\\1instance_var: int, ''' -- replace the match with the new, desired code
+    r'''(def calc1\\()self,''' -- match and capture the part of the old code we need to keep
+    r'''\\1instance_var: int,''' -- replace the match with the new, desired code
   WHEN REGEX r'''self\\.instance_var''' THEN SUB
     r'''self\\.(instance_var)''' -- match and capture the part of the old code we need to keep
     r'''\\1''' -- replace the match with the part we need to keep (stored in group 1)
@@ -1165,9 +1192,9 @@ WITH CONTENT'''
 UPDATE FUNCTION "calc2"
   FROM FILE "file.py"
 REPLACE WHOLE WITH CASE
-  WHEN REGEX r'''^def calc2''' THEN CONTENT '''
-@0:def calc2(a, base_tax: float = 1.3):
-'''
+  WHEN REGEX r'''def calc2''' THEN SUBS
+    r'''(def calc2\\(a)''' -- match the beginning of the line and capture it: `def calc2(a`
+    r'''\\1, base_tax: float = 1.3''' -- restore the captured group and append desired addition, so that we finally get `def calc2(a, base_tax: float = 1.3):`
   WHEN REGEX r'''calc1\\(''' THEN SUB
     r'''(calc1\\()'''
     r'''\\1base_tax, '''
@@ -1223,7 +1250,7 @@ UPDATE FUNCTION "_candidate"
   FROM FILE "file.py"
 REPLACE WHOLE WITH CASE
   WHEN REGEX r'''def _candidate''' THEN SUB
-    r'''(def _candidate\\()self,\\s*'''
+    r'''(def _candidate\\()self,'''
     r'''\\1'''
 END;
 
@@ -1286,7 +1313,7 @@ UPDATE FUNCTION "_candidate"
   FROM FILE "file.py"
 REPLACE WHOLE WITH CASE
   WHEN REGEX r'''def _candidate''' THEN SUB
-    r'''(def _candidate\\()self,\\s*'''
+    r'''(def _candidate\\()self,'''
     r'''\\1'''
 END;
 
