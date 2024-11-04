@@ -187,20 +187,20 @@ OFFSET n: skips n matches, thus specifies the (n+1)-th match;
 <dt>contents: (<content_literal> | <content_from_segment> )</dt>
 
 <dt>content_literal: CONTENT '''<relative-indent-level-string>'''</dt>
-<dd>Examples:</dd>
-<dd>CONTENT '''@0:return "x"'''</dd>
+<dd>Examples and enclosing variations (single quote, double quote and raw):</dd>
+<dd>CONTENT '''@0:return "x"''' -- if the content has *double* quotes (") inside, use the *single* quote variation (''')</dd>
 <dd>CONTENT '''@-1:if a > 0:'''</dd>
-<dd>CONTENT '''
+<dd>CONTENT r'''
 @0:return "x"
 @-1:if a > 0:
-@0:b += 1
+@0:s = re.sub(r'[^\\w\\s-]', '', s)
 '''</d>
 <dd>CONTENT \"\"\"
 @0:my_multiline_text = '''test
 @1:multi
 @1:line
 @0'''
-\"\"\"</dd>
+\"\"\" -- if the content has *single* quotes (') inside, use the double quote variation (\"\"\")</dd>
 <dd>CONTENT '''
 @0:class myClass:
 @1:def myFunction(param):
@@ -211,6 +211,7 @@ OFFSET n: skips n matches, thus specifies the (n+1)-th match;
 @2:return param * 2
 @0:class nextClass:
 '''</dd>
+<dd>CONTENT r'''s = re.sub(r"[^\\w\\s-]", "", s)''' -- best to be safe and always use the raw string variation (r''' or r\"\"\")</dd>
 <dt>content_from_segment: [singlefile_clause] <marker_or_segment> [relative_indentation]</dt>
 <dd></dd>
 
@@ -466,7 +467,7 @@ END;
 -- The *reference point* for horizontal positioning is a_def1's body
 UPDATE FILE "a1.py"
 INSERT INTO FUNCTION "a_def1" TOP
-WITH CONTENT '''
+WITH CONTENT r'''
 @0:\"\"\"Calculate sum of two numbers.
 @0:
 @0:Args:
@@ -486,7 +487,7 @@ UPDATE FUNCTION "a_def1"
 FROM FILE "a1.py"
 INSERT AFTER LINE '''):'''
 -- The CONTENT below uses line "):" (*not* the line after it) as reference point for horizontal positioning
-WITH CONTENT '''
+WITH CONTENT r'''
 @1:\"\"\"Calculate sum of two numbers.
 @1:
 @1:Args:
@@ -507,7 +508,7 @@ We should use the `parent chain` to easily disambiguate it:</dd>
 -- Starting the parent chain with a dot means we're anchoring the root (top level).
 UPDATE FILE "a1.py"
 INSERT INTO FUNCTION ".a_def2" TOP
-WITH CONTENT '''
+WITH CONTENT r'''
 @0:\"\"\"Returns a value\"\"\"
 ''';
 </dd>
@@ -516,7 +517,7 @@ WITH CONTENT '''
 -- Matches if a_def2 has 'a' as its immediate parent
 UPDATE FILE "a1.py"
 INSERT INTO FUNCTION "a.a_def2" TOP
-WITH CONTENT '''
+WITH CONTENT r'''
 @0:\"\"\"Returns a value\"\"\"
 ''';
 </dd>
@@ -528,7 +529,7 @@ WITH CONTENT '''
 UPDATE FUNCTION "a"
 FROM FILE "a1.py"
 INSERT INTO FUNCTION "a_def1" TOP
-WITH CONTENT '''
+WITH CONTENT r'''
 @0:\"\"\"Returns a value\"\"\"
 ''';
 </dd>
@@ -697,18 +698,18 @@ END;
 
 """
 
-#  TODO
+    #  TODO
 
-# To replace 'failUnlessEqual' with 'assertEqual' using Comby notation:
-# ```CEDARScript
-# UPDATE PROJECT
-# REAFCTOR LANGUAGE "comby"
-# WITH PATTERN '''
-# comby 'failUnlessEqual(:[a],:[b])' 'assertEqual(:[a],:[b])' example.py
-# '''
-# ```
+    # To replace 'failUnlessEqual' with 'assertEqual' using Comby notation:
+    # ```CEDARScript
+    # UPDATE PROJECT
+    # REAFCTOR LANGUAGE "comby"
+    # WITH PATTERN '''
+    # comby 'failUnlessEqual(:[a],:[b])' 'assertEqual(:[a],:[b])' example.py
+    # '''
+    # ```
 
-#   + When presented with a code change task:
+    #   + When presented with a code change task:
     #  +
     #  + 1. Analysis Phase:
     #  +    a. Carefully read and understand the requested changes
@@ -761,7 +762,7 @@ END;
     #  + </li>
 
 
-# Appears twice (as SYSTEM and as USER):
+    # Appears twice (as SYSTEM and as USER):
     system_reminder = """When presented with a code change task:
 <action>
 <step>Identify the files to be updated</step>
@@ -849,8 +850,8 @@ After moving the method to the top level (thus turning it into a function), you 
 <dt>Triple Backtick</dt>
 <dd>When using *triple backticks*, you *MUST* pair *every single backtick* with a preeding backslash (total of 3 pairs of backslash-backtick)</dd>
 <dd>
-- Incorrect (*without* a preceding \\ for each backtick): `WITH CONTENT '''@0:Bash: ``` rm *.py ```''';`
-- Correct (*every* single backtick is preceded by a "\\"): `WITH CONTENT '''@0:Bash: \\`\\`\\` rm *.py \\`\\`\\`''';`
+- Incorrect (*without* a preceding \\ for each backtick): `WITH CONTENT r'''@0:Bash: ``` rm *.py ```''';`
+- Correct (*every* single backtick is preceded by a "\\"): `WITH CONTENT r'''@0:Bash: \\`\\`\\` rm *.py \\`\\`\\`''';`
 </dd>
 
 <dt>Using parenthesis inside <repl></dt>
@@ -870,7 +871,7 @@ You MUST write <NOCEDARSCRIPT/> as the last line if:
 2) If there are no CEDARScript blocks to execute.
 {shell_cmd_reminder}
 """
-# TODO Finally, rephrase and summarize my instructions. Only then, respond. Do so by thinking step by step.
+    # TODO Finally, rephrase and summarize my instructions. Only then, respond. Do so by thinking step by step.
 
     example_messages = CEDARScriptPromptsBase.example_messages + [
         dict(
@@ -995,7 +996,7 @@ Here's the CEDARScript script:
 UPDATE METHOD "Greeter.__init__"
   FROM FILE "file.py"
 REPLACE BODY
-WITH CONTENT '''
+WITH CONTENT r'''
 @0:self.greeting_count: int = 0
 ''';
 
@@ -1004,7 +1005,7 @@ WITH CONTENT '''
 UPDATE METHOD "Greeter.print_with_prefix"
   FROM FILE "file.py"
 REPLACE BODY
-WITH CONTENT '''
+WITH CONTENT r'''
 @0:print(f"{{prefix}}{{name}}")
 ''';
 
@@ -1014,7 +1015,7 @@ UPDATE CLASS "Greeter"
   FROM FILE "file.py"
 INSERT INTO METHOD "greet" TOP -- at the TOP of the function body
 -- The function body is the reference indent level; `@0:` means to use that same level 
-WITH CONTENT '''
+WITH CONTENT r'''
 @0:print_with_prefix('Hi, ', name)
 ''';
 
@@ -1024,7 +1025,7 @@ UPDATE CLASS "Greeter"
   FROM FILE "file.py"
 INSERT INTO METHOD "greet" BOTTOM
 -- The function body is the reference indent level; `@0:` means to use that same level 
-WITH CONTENT '''
+WITH CONTENT r'''
 @0:self.greeting_count += 1
 @0:print(f'There have been {{self.greeting_count}} greetings so far.')
 ''';
@@ -1120,7 +1121,7 @@ REPLACE BODY WITH CASE
 END;
 {fence[1]}""",
         ),
-    dict(
+        dict(
             role="user",
             content="""```file.py
 class A0:
@@ -1177,7 +1178,7 @@ INSERT BEFORE CLASS "A"
 UPDATE FUNCTION ".calc1" OFFSET 1
   FROM FILE "file.py"
 REPLACE WHOLE
-WITH CONTENT '''
+WITH CONTENT r'''
 @0:def calc1(instance_var: int, a):
 @1:return a * instance_var
 ''';
@@ -1197,7 +1198,7 @@ UPDATE FILE "file.py"
 DELETE LINE REGEX r'''^# I'm a bad'''; -- Removes the whole line that starts with that prefix
 {fence[1]}""",
         ),
-    dict(
+        dict(
             role="user",
             content="""```file.py
 def calc1(a):
@@ -1229,7 +1230,7 @@ Here's the CEDARScript script:
 UPDATE FUNCTION "calc1"
   FROM FILE "file.py"
 REPLACE WHOLE
-WITH CONTENT'''
+WITH CONTENT '''
 @0:def calc1(tax: float, a):
 @1:return a * tax
 ''';
@@ -1248,7 +1249,7 @@ REPLACE WHOLE WITH CASE
 END;
 {fence[1]}""",
         ),
-    dict(
+        dict(
             role="user",
             content="""```file.py
 class A:
@@ -1311,7 +1312,7 @@ REPLACE WHOLE WITH CASE
 END;
 {fence[1]}""",
         ),
-    dict(
+        dict(
             role="user",
             content="""```file.py
 class A:
