@@ -60,7 +60,7 @@ first line where the identifier is declared (function signature, etc)
 <dd>The reference point is the term chosen for the (MOVE|INSERT|REPLACE) action</dd>
 
 <dd>Optional specification of new content:
-- <content_literal>: direct text using <relative-indent-level-string>
+- <content_literal>: direct text using <string>
 - <content_from_segment>: content taken from existing code
 - <line_filter>: filters input lines
 </dd>
@@ -189,16 +189,15 @@ OFFSET n: skips n matches, thus specifies the (n+1)-th match;
 
 <dt>contents: (<content_literal> | <content_from_segment> )</dt>
 
-<dt>content_literal: CONTENT '''<relative-indent-level-string>'''</dt>
+<dt>content_literal: CONTENT '''<string>'''</dt>
 <dd>Examples and enclosing variations (single quote, double quote and raw):</dd>
-<dd>CONTENT '''return "x"''' -- if the content has *double* quotes (") inside, use the *single* quote variation (''')</dd>
-<dd>CONTENT '''@-1:if a > 0:'''</dd>
-<dd>CONTENT r'''s = re.sub(r"[^\\w\\s-]", "", s)'''</d>
+<dd>CONTENT '''    return "x"''' -- if the content has *double* quotes (") inside, use the *single* quote variation (''')</dd>
+<dd>CONTENT r'''    s = re.sub(r"[^\\w\\s-]", "", s)''' -- a raw string is required when there are backslashes inside content</d>
 <dd>CONTENT r\"\"\"
-my_multiline_text = r'''test
-    multi
-    line\\.
-'''
+    my_multiline_text = r'''test
+        multi
+        line\\.
+    '''
 \"\"\" -- if the content has *single* quotes (') inside, use the double quote variation (\"\"\")</dd>
 <dd>CONTENT r'''basic''' -- best to be safe and always use the raw string variation (r''' or r\"\"\")</dd>
 <dt>content_from_segment: [singlefile_clause] <marker_or_segment> [relative_indentation]</dt>
@@ -301,14 +300,6 @@ To *match* parentheses, you *MUST* escape them as in the 2 examples below:
 
 ## Horizontal Positioning: Relative Indent Level
 
-<dt>relative-indent-level-string: [<relative-indent-prefix>]<line-1><newline>[[<relative-indent-prefix>]<line-2><newline>]...</dt>
-<dd>(... denotes repetition)</dd>
-<dd>line-1, line-2 ... line-n is the actual content for each line</dd>
-<dd>MUST be used when providing CONTENT blocks. Simplifies matching indentation with the existing code being changed</dd>
-<dd>The CEDARScript runtime will handle the actual formatting and indentation in the target code file</dd>
-<dd>Each line can use the optional <relative-indent-prefix> OR can be a line with actual indentation characters.
-In both cases, indentation is relative to the *reference point*</dd>
-<dt>relative-indent-prefix: @<relative-indent-level>:</dt>
 <dt>relative-indent-level: integer</dt>
 <dd>Determines *horizontal positioning* as a *relative* indent *level* compared to the *horizontal positioning reference point*
 (the reference point is the <marker> chosen for the <update-action> (MOVE|INSERT|REPLACE))</dd>
@@ -345,14 +336,43 @@ MV FILE "<source>" TO "<target>";
 ## Cookbook
 
 <codebase>
+```greenfield-style.py
+#  Notice how everything in this file is basically empty.
+# When modifying this kind of file, it's better to just REPLACE functions/methods that are basically empty.
+
+def is_zero(num):
+    pass
+
+def root():
+
+    def nested_1():
+
+        def is_even():
+            pass
+
+        def nested_2():
+
+            def is_odd():
+                pass
+
+class Card:
+
+    def __init__(self, rank):
+        pass
+
+    def __str__(self):
+        return "{self.rank}{self.suit}"
+
+```
+
 ```Makefile
 .PHONY: all version play build test dist clean
 
 all: clean build version test
 
 version:
-	git describe --tags
-	python -m setuptools_scm
+    git describe --tags
+    python -m setuptools_scm
 ```
 
 ```a1.py
@@ -427,6 +447,70 @@ class MyClass(NamedTuple):
 Consider the files in the codebase above and see the examples below.
 
 <dl note="each 'dd' item gets a fresh copy of the codebase files">
+
+<dt file="greenfield-style.py">Implement `is_zero`</dt>
+<dd>
+Implement the `is_zero` function that checks if a number is zero. Here's a simple and efficient implementation:
+</dd>
+<dd>
+-- Note: The body of `is_zero` is at indentation level 1
+UPDATE FUNCTION ".is_zero"
+  FROM FILE "greenfield-style.py"
+REPLACE BODY WITH CONTENT r'''
+    return num == 0
+''';
+</dd>
+
+<dt file="greenfield-style.py">Implement `is_even`</dt>
+<dd>
+Implement the `is_even` function that checks if a number is even. Here's a simple and efficient implementation:
+</dd>
+<dd>
+-- Note: The body of `is_even` is at indentation level 3
+UPDATE FUNCTION ".root.nested_1.is_even"
+  FROM FILE "greenfield-style.py"
+REPLACE BODY WITH CONTENT r'''
+            return num % 2 == 0
+''';
+</dd>
+
+<dt file="greenfield-style.py">Implement `is_odd`</dt>
+<dd>
+Implement the `is_odd` function that checks if a number is odd. Here's a simple and efficient implementation:
+</dd>
+<dd>
+-- Note: The body of `is_odd` is at indentation level 4
+UPDATE FUNCTION ".root.nested_1.nested_2.is_odd"
+  FROM FILE "greenfield-style.py"
+REPLACE BODY WITH CONTENT r'''
+                return num % 2 != 0
+''';
+</dd>
+
+<dt file="greenfield-style.py">Fix class `Card`</dt>
+<dd>
+The `Card` class has 2 problems:
+1. The `__init__` method is empty (pass);
+2. The string formatting is incorrect
+</dd>
+<dd>
+-- we also need to modify the method's signature, so we use REPLACE WHOLE (instead of REPLACE BODY)
+UPDATE METHOD "Card.__init__"
+  FROM FILE "greenfield-style.py"
+REPLACE WHOLE WITH CONTENT r'''
+    def __init__(self, rank, suit):
+        self.rank = rank
+        self.suit = suit
+''';
+
+-- Here we just need to modify the method's BODY
+UPDATE METHOD "Card.__str__"
+  FROM FILE "greenfield-style.py"
+REPLACE BODY WITH CONTENT r'''
+        return f"{self.rank}{self.suit}"
+''';
+</dd>
+
 <dt file="Makefile">Add `v` as an alias to `version`</dt>
 <dd>
 UPDATE FILE "Makefile"
@@ -455,29 +539,25 @@ END;
 <dt file="a1.py">Add Docstring to a Python function/method/body</dt>
 <dd>
 -- Using `INTO .. TOP` is the *BEST* option to add content to the top of the body
--- The *reference point* for horizontal positioning is a_def1's body
 UPDATE FILE "a1.py"
 INSERT INTO FUNCTION "a_def1" TOP
 WITH CONTENT r'''
-\"\"\"Calculate sum of two numbers.
-
-Args:
-    a: First number
-    b: Second number
-
-Returns:
-    Sum of a and b
-\"\"\"
+    \"\"\"Calculate sum of two numbers.
+    
+    Args:
+        a: First number
+        b: Second number
+    
+    Returns:
+        Sum of a and b
+    \"\"\"
 ''';
 </dd>
 <dd>
 -- We can also use `(AFTER|BEFORE) `LINE '''<string>'''`, which is still an excellent choice for this case.
--- Note: As the *reference point* for horizontal positioning is now line "):" instead of the body,
---   we need to use different values for the relative indent levels.
 UPDATE FUNCTION "a_def1"
 FROM FILE "a1.py"
 INSERT AFTER LINE '''):'''
--- The CONTENT below uses line "):" (*not* the line after it) as reference point for horizontal positioning
 WITH CONTENT r'''
     \"\"\"Calculate sum of two numbers.
     
@@ -500,7 +580,7 @@ We should use the `parent chain` to easily disambiguate it:</dd>
 UPDATE FILE "a1.py"
 INSERT INTO FUNCTION ".a_def2" TOP
 WITH CONTENT r'''
-\"\"\"Returns a value\"\"\"
+    \"\"\"Returns a value\"\"\"
 ''';
 </dd>
 <dd>
@@ -509,7 +589,7 @@ WITH CONTENT r'''
 UPDATE FILE "a1.py"
 INSERT INTO FUNCTION "a.a_def2" TOP
 WITH CONTENT r'''
-\"\"\"Returns a value\"\"\"
+        \"\"\"Returns a value\"\"\"
 ''';
 </dd>
 
@@ -521,7 +601,7 @@ UPDATE FUNCTION "a"
 FROM FILE "a1.py"
 INSERT INTO FUNCTION "a_def1" TOP
 WITH CONTENT r'''
-\"\"\"Returns a value\"\"\"
+        \"\"\"Returns a value\"\"\"
 ''';
 </dd>
 
@@ -629,9 +709,9 @@ UPDATE METHOD "anotherFunction"
 REPLACE BODY
 WITH CASE
   WHEN REGEX r'''dummy\\.\\.\\.''' THEN REMOVE
-  WHEN REGEX r'''lops''' THEN CONTENT r'''
-loops
-'''
+  WHEN REGEX r'''lops''' THEN SUB
+    r'''lops'''
+    r'''loops'''
 END;
 </dd>
 
@@ -800,12 +880,6 @@ Never use ambiguous references. When selecting reference points, follow this pri
 - Correct: Start counting at the first line where the function/method's signature appears.
 </dd>
 
-<dt>content_literal: relative-indent-level</dt>
-<dd>
-Incorrect: Using `REPLACE LINE` and providing <content_literal> a non-zero <relative-indent-level>
-Correct: When using `REPLACE LINE`, remember that the *horizontal positioning reference point* is the LINE iteself, so we need to use 0 as the <relative-indent-level> so that the line keeps its original indent level.
-</dd>
-
 <dt>Turning method into top-level function</dt>
 <dd type="*CRUCIAL*">
 After moving the method to the top level (thus turning it into a function), you *MUST*:
@@ -911,7 +985,7 @@ UPDATE METHOD "MyClass.myFirstFunction"
   FROM FILE "file.py"
 MOVE WHOLE
 INSERT BEFORE CLASS "MyClass"
-  RELATIVE INDENTATION 0; -- the block of code being moved wil start at the same indentation as the 'reference mark'
+  RELATIVE INDENTATION 0; -- the block of code being moved wil start at the same indentation as the 'reference point'
 
 -- 2. Update the copied function to remove references to `self`, now declaring `instance_var_1` as parameter
 /* Match the line with the prefix that contains the OLD version of the line (`def myFirstFunction(self,`) and
@@ -988,7 +1062,7 @@ UPDATE METHOD "Greeter.__init__"
   FROM FILE "file.py"
 REPLACE BODY
 WITH CONTENT r'''
-self.greeting_count: int = 0
+        self.greeting_count: int = 0
 ''';
 
 -- 2. Implement the `print_with_prefix()` method to print parameter `name` prefixed with the `prefix` parameter;
@@ -997,7 +1071,7 @@ UPDATE METHOD "Greeter.print_with_prefix"
   FROM FILE "file.py"
 REPLACE BODY
 WITH CONTENT r'''
-print(f"{{prefix}}{{name}}")
+        print(f"{{prefix}}{{name}}")
 ''';
 
 -- 3. Insert a call to the `print_with_prefix()` method at the top of the last method (`greet`);
@@ -1005,9 +1079,8 @@ print(f"{{prefix}}{{name}}")
 UPDATE CLASS "Greeter"
   FROM FILE "file.py"
 INSERT INTO METHOD "greet" TOP -- at the TOP of the function body
--- The function body is the reference indent level; `@0:` means to use that same level 
 WITH CONTENT r'''
-print_with_prefix('Hi, ', name)
+        print_with_prefix('Hi, ', name)
 ''';
 
 -- 4. Insert code at the bottom of the body of `greet()` method to increment the greeting count and print it.
@@ -1015,10 +1088,9 @@ print_with_prefix('Hi, ', name)
 UPDATE CLASS "Greeter"
   FROM FILE "file.py"
 INSERT INTO METHOD "greet" BOTTOM
--- The function body is the reference indent level; `@0:` means to use that same level 
 WITH CONTENT r'''
-self.greeting_count += 1
-print(f'There have been {{self.greeting_count}} greetings so far.')
+        self.greeting_count += 1
+        print(f'There have been {{self.greeting_count}} greetings so far.')
 ''';
 {fence[1]}
 

@@ -638,9 +638,9 @@ UPDATE METHOD "anotherFunction"
 REPLACE BODY
 WITH CASE
   WHEN REGEX r'''dummy\\.\\.\\.''' THEN REMOVE
-  WHEN REGEX r'''lops''' THEN CONTENT '''
-@0:loops
-'''
+  WHEN REGEX r'''lops''' THEN SUB
+    r'''lops'''
+    r'''loops'''
 END;
 </dd>
 
