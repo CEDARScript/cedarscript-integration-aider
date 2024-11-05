@@ -24,7 +24,7 @@ def _get_visual_indicator(percent_change: float | None) -> str:
 
 def _get_token_change_indicators(test_1: 'AiderTestResult', test_2: 'AiderTestResult') -> tuple[str, str]:
     """Generate visual indicators for token changes between two test runs.
-    
+
     Returns:
         tuple containing:
             - Left-aligned received tokens indicator in parentheses
@@ -32,18 +32,24 @@ def _get_token_change_indicators(test_1: 'AiderTestResult', test_2: 'AiderTestRe
     """
     sent_change = ((test_2.sent_tokens - test_1.sent_tokens) * 100 / test_1.sent_tokens) if test_1.sent_tokens else 0
     recv_change = ((test_2.received_tokens - test_1.received_tokens) * 100 / test_1.received_tokens) if test_1.received_tokens else 0
-    
+
     # Generate the indicators (about 5% change per character, so 20 chars = ~100% change)
     sent_indicator = "+" * min(20, max(1, int(abs(sent_change) / 5)))
     recv_indicator = "-" * min(20, max(1, int(abs(recv_change) / 5)))
-    
+
     # Right-align received tokens indicator (pad left with spaces)
     recv_col = f"({recv_indicator:>20})"
-    
-    # Left-align sent tokens indicator (pad right with spaces) 
+
+    # Left-align sent tokens indicator (pad right with spaces)
     sent_col = f"({sent_indicator:<20})"
-    
+
     return recv_col, sent_col  # received tokens first, then sent tokens
+def print_status_line(prefix: str, count: int, benchmark_run_2_size: int, total_tests: int, indent: str = "") -> None:
+    if count == 0:
+        return
+    current_percent = count * 100 / benchmark_run_2_size
+    print(f"{indent}{prefix}: {count:3d} ({current_percent:3.0f}%){_get_visual_indicator(current_percent)}")
+
 def main(benchmark_dir_1: str, benchmark_dir_2: str):
     """
     Main function to compare two benchmark runs and print the analysis.
@@ -159,29 +165,32 @@ def main(benchmark_dir_1: str, benchmark_dir_2: str):
     total_tests = len(benchmark_run_1)
     if test_names_only_1:
         print()
-        print(f"< REMOVED      : {len(test_names_only_1):3d} ({len(test_names_only_1)*100/total_tests:3.0f}% of total){_get_visual_indicator(len(test_names_only_1)*100/total_tests)}")
-        print(f"< +     PASSED : {len(test_names_only_1_passed):3d} ({len(test_names_only_1_passed)*100/total_tests:3.0f}% of total){_get_visual_indicator(len(test_names_only_1_passed)*100/total_tests)}")
-        print(f"< -     FAILED : {len(test_names_only_1_failed):3d} ({len(test_names_only_1_failed)*100/total_tests:3.0f}% of total){_get_visual_indicator(len(test_names_only_1_failed)*100/total_tests)}")
+        print_status_line("< REMOVED     ", len(test_names_only_1), len(benchmark_run_2), total_tests, "  ")
+        print_status_line("< +     PASSED", len(test_names_only_1_passed), len(benchmark_run_2), total_tests, "  ")
+        print_status_line("< -     FAILED", len(test_names_only_1_failed), len(benchmark_run_2), total_tests, "  ")
     if test_names_only_2:
         print()
-        print(f"> NEW          : {len(test_names_only_2):3d} ({len(test_names_only_2)*100/total_tests:.1f}% of total){_get_visual_indicator(len(test_names_only_2)*100/total_tests)}")
-        print(f"> +     PASSED : {len(test_names_only_2_passed):3d} ({len(test_names_only_2_passed)*100/total_tests:3.0f}% of total){_get_visual_indicator(len(test_names_only_2_passed)*100/total_tests)}")
-        print(f"> -     FAILED : {len(test_names_only_2_failed):3d} ({len(test_names_only_2_failed)*100/total_tests:3.0f}% of total){_get_visual_indicator(len(test_names_only_2_failed)*100/total_tests)}")
-    if test_names_improved:
-        print()
-        print(f"+ IMPROVED     : {len(test_names_improved):3d} ({len(test_names_improved)*100/total_tests:3.0f}% of total){_get_visual_indicator(len(test_names_improved)*100/total_tests)}")
-        print(f"++  Now PASSES : {len(test_names_improved_now_passes):3d} ({len(test_names_improved_now_passes)*100/total_tests:3.0f}% of total){_get_visual_indicator(len(test_names_improved_now_passes)*100/total_tests)}")
-        print(f"+        Minor : {len(test_names_improved_minor):3d} ({len(test_names_improved_minor)*100/total_tests:3.0f}% of total){_get_visual_indicator(len(test_names_improved_minor)*100/total_tests)}")
-    if test_names_worsened:
-        print()
-        print(f"- WORSENED     : {len(test_names_worsened):3d} ({len(test_names_worsened)*100/total_tests:3.0f}% of total){_get_visual_indicator(len(test_names_worsened)*100/total_tests)}")
-        print(f"--  Now FAILED : {len(test_names_worsened_now_fails):3d} ({len(test_names_worsened_now_fails)*100/total_tests:3.0f}% of total){_get_visual_indicator(len(test_names_worsened_now_fails)*100/total_tests)}")
-        print(f"-        Minor : {len(test_names_worsened_minor):3d} ({len(test_names_worsened_minor)*100/total_tests:3.0f}% of total){_get_visual_indicator(len(test_names_worsened_minor)*100/total_tests)}")
+        print_status_line("> NEW         ", len(test_names_only_2), len(benchmark_run_2), total_tests, "  ")
+        print_status_line("> +     PASSED", len(test_names_only_2_passed), len(benchmark_run_2), total_tests, "  ")
+        print_status_line("> -     FAILED", len(test_names_only_2_failed), len(benchmark_run_2), total_tests, "  ")
     if test_names_stable:
         print()
-        print(f"# STABLE       : {len(test_names_stable):3d} ({len(test_names_stable)*100/total_tests:3.0f}% of total){_get_visual_indicator(len(test_names_stable)*100/total_tests)}")
-        print(f"#+      PASSED : {len(test_names_stable_passed):3d} ({len(test_names_stable_passed)*100/total_tests:3.0f}% of total){_get_visual_indicator(len(test_names_stable_passed)*100/total_tests)}")
-        print(f"#-      FAILED : {len(test_names_stable_failed):3d} ({len(test_names_stable_failed)*100/total_tests:3.0f}% of total){_get_visual_indicator(len(test_names_stable_failed)*100/total_tests)}")
+        print_status_line("# STABLE      ", len(test_names_stable), len(benchmark_run_2), total_tests, "  ")
+        print_status_line("#+      PASSED", len(test_names_stable_passed), len(benchmark_run_2), total_tests, "  ")
+        print_status_line("#-      FAILED", len(test_names_stable_failed), len(benchmark_run_2), total_tests, "  ")
+    if test_names_improved:
+        print()
+        print_status_line("+ IMPROVED    ", len(test_names_improved), len(benchmark_run_2), total_tests, "  ")
+        print_status_line("++  Now PASSED", len(test_names_improved_now_passes), len(benchmark_run_2), total_tests, "  ")
+        print_status_line("+        Minor", len(test_names_improved_minor), len(benchmark_run_2), total_tests, "  ")
+    if test_names_worsened:
+        print()
+        print_status_line("- WORSENED    ", len(test_names_worsened), len(benchmark_run_2), total_tests, "  ")
+        print_status_line("--  Now FAILED", len(test_names_worsened_now_fails), len(benchmark_run_2), total_tests, "  ")
+        print_status_line("-        Minor", len(test_names_worsened_minor), len(benchmark_run_2), total_tests, "  ")
+
+    print()
+    print_status_line("∂      nP - nF", len(test_names_improved_now_passes) - len(test_names_worsened_now_fails), len(benchmark_run_2), total_tests, "  ")
 
     test_count_delta = len(benchmark_run_2) - len(benchmark_run_1)
     # Calculate totals for each run
@@ -302,10 +311,10 @@ def _get_attempt_limit_and_normalized_counts(benchmark_run: dict[str, AiderTestR
     result = Counter([t.failed_attempt_count for t in benchmark_run.values()])
     """
     Process and normalize the failed attempt counts from a benchmark run.
-    
+
     Args:
     benchmark_run (dict[str, AiderTestResult]): Dictionary mapping test names to their results
-    
+
     Returns:
     tuple[int | None, Counter]: A tuple containing:
     - The absolute value of the failure limit (if any tests hit it), or None
