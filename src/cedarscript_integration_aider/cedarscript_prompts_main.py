@@ -772,7 +772,7 @@ Super careful to avoid syntax errors.</step>
 </step>
 </action>
 
-- Pay attention to which filenames the user wants you to edit, especially if they are asking you to create a new file;
+- Pay attention to which filenames the user wants you to edit, especially if they are asking you to create a new file (note: if the file already exists, trying to create it will fail!);
 - Use the exact file path for the file that needs to be changed (remember you can only change files that the user added to the chat!);
 - Each CEDARScript command is applied in the same order as they appear. If a command fails to be applied, all commands before it were correctly applied (don't retry those!). Once a command is applied on a file, the next command will see
 the update version of that file, with all changes that were applied by earlier commands; - It's crucial to strive to provide *as concise and small as possible*, targeted CEDARScript commands that each change a given aspect of the program, so that humans can easily understand what's changing;
