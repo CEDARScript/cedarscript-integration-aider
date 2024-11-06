@@ -3,6 +3,7 @@
 This script compares two benchmark run dir and analyzes the changes in test performance.
 It categorizes tests as improved, worsened, stable, or present in only one of the benchmark runs.
 """
+from dataclasses import dataclass
 import os
 import subprocess
 from collections import Counter
@@ -45,11 +46,18 @@ def _get_token_change_indicators(test_1: 'AiderTestResult', test_2: 'AiderTestRe
 
     return recv_col, sent_col  # received tokens first, then sent tokens
 
-def print_status_line(prefix: str, count: int, benchmark_run_2_size: int, total_tests: int, indent: str = "") -> None:
-    if count == 0:
-        return
-    current_percent = count * 100 / benchmark_run_2_size
-    print(f"{indent}{prefix}: {count:3d} ({current_percent:3.0f}%){_get_visual_indicator(current_percent)}")
+
+@dataclass
+class StatusPrinter:
+    test_count: int
+
+    def __call__(self, prefix: str, count: int, indent: str = "") -> None:
+        """Print a status line with consistent formatting."""
+        if count == 0:
+            return
+        current_percent = count * 100 / self.test_count
+        print(f"{indent}{prefix}: {count:3d} ({current_percent:3.0f}%){_get_visual_indicator(current_percent)}")
+
 
 def main(benchmark_dir_1: str, benchmark_dir_2: str):
     """
@@ -163,35 +171,35 @@ def main(benchmark_dir_1: str, benchmark_dir_2: str):
 
     print()
     print("@@ ============= TEST STATUS CHANGES ============ @@")
-    total_tests = len(benchmark_run_1)
+    printer = StatusPrinter(len(benchmark_run_2))
     if test_names_only_1:
         print()
-        print_status_line("< REMOVED     ", len(test_names_only_1), len(benchmark_run_2), total_tests)
-        print_status_line("< +       PASS", len(test_names_only_1_passed), len(benchmark_run_2), total_tests)
-        print_status_line("< -       FAIL", len(test_names_only_1_failed), len(benchmark_run_2), total_tests)
+        printer("< REMOVED     ", len(test_names_only_1))
+        printer("< +       PASS", len(test_names_only_1_passed))
+        printer("< -       FAIL", len(test_names_only_1_failed))
     if test_names_only_2:
         print()
-        print_status_line("> NEW         ", len(test_names_only_2), len(benchmark_run_2), total_tests)
-        print_status_line("> +       PASS", len(test_names_only_2_passed), len(benchmark_run_2), total_tests)
-        print_status_line("> -       FAIL", len(test_names_only_2_failed), len(benchmark_run_2), total_tests)
+        printer("> NEW         ", len(test_names_only_2))
+        printer("> +       PASS", len(test_names_only_2_passed))
+        printer("> -       FAIL", len(test_names_only_2_failed))
     if test_names_stable:
         print()
-        print_status_line("# STABLE      ", len(test_names_stable), len(benchmark_run_2), total_tests)
-        print_status_line("#+        PASS", len(test_names_stable_passed), len(benchmark_run_2), total_tests)
-        print_status_line("#-        FAIL", len(test_names_stable_failed), len(benchmark_run_2), total_tests)
+        printer("# STABLE      ", len(test_names_stable))
+        printer("#+        PASS", len(test_names_stable_passed))
+        printer("#-        FAIL", len(test_names_stable_failed))
     if test_names_improved:
         print()
-        print_status_line("+ IMPROVED    ", len(test_names_improved), len(benchmark_run_2), total_tests)
-        print_status_line("++    Now PASS", len(test_names_improved_now_passes), len(benchmark_run_2), total_tests)
-        print_status_line("+        Minor", len(test_names_improved_minor), len(benchmark_run_2), total_tests)
+        printer("+ IMPROVED    ", len(test_names_improved))
+        printer("++    Now PASS", len(test_names_improved_now_passes))
+        printer("+        Minor", len(test_names_improved_minor))
     if test_names_worsened:
         print()
-        print_status_line("- WORSENED    ", len(test_names_worsened), len(benchmark_run_2), total_tests)
-        print_status_line("--    Now FAIL", len(test_names_worsened_now_fails), len(benchmark_run_2), total_tests)
-        print_status_line("-        Minor", len(test_names_worsened_minor), len(benchmark_run_2), total_tests)
+        printer("- WORSENED    ", len(test_names_worsened))
+        printer("--    Now FAIL", len(test_names_worsened_now_fails))
+        printer("-        Minor", len(test_names_worsened_minor))
 
     print()
-    print_status_line("∂ nowPASS-FAIL", len(test_names_improved_now_passes) - len(test_names_worsened_now_fails), len(benchmark_run_2), total_tests)
+    printer("∂ nowPASS-FAIL", len(test_names_improved_now_passes) - len(test_names_worsened_now_fails))
 
     test_count_delta = len(benchmark_run_2) - len(benchmark_run_1)
     # Calculate totals for each run
