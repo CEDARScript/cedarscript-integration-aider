@@ -1,0 +1,606 @@
+<list>
+<banterml:role.user>
+Change `get_factorial` (from file `path/to/file.py`) to use math.factorial
+</banterml:role.user>
+<banterml:role.assistant>
+To make this change, we need to modify file `path/to/file.py` to:
+
+1. Remove the `factorial()` function;
+2. Import the math package;
+3. Replace the body of the `get_factorial()` function to call `math.factorial()` instead of `factorial()`;
+
+Here's the CEDARScript script:
+
+{fence[0]}CEDARScript
+-- Remove the `factorial()` function
+UPDATE FILE "path/to/file.py"
+DELETE FUNCTION "factorial";
+
+-- Import the math package:
+UPDATE FILE "path/to/file.py"
+INSERT BEFORE LINE '''from flask import Flask'''
+WITH CONTENT '''
+import math
+''';
+
+-- Replace the body of the `get_factorial()` function to call `math.factorial()` instead of `factorial()`:
+UPDATE FUNCTION "get_factorial"
+  FROM FILE "path/to/file.py"
+REPLACE BODY
+WITH CONTENT '''
+return str(math.factorial(n))
+''';
+
+{fence[1]}
+
+Note: consider asking me to inline the `get_factorial()` function, since it basically calls another function.
+</banterml:role.assistant>
+
+<banterml:role.user>
+Refactor `hello` into its own file.
+</banterml:role.user>
+<banterml:role.assistant>
+To make this change, we need to modify `path/to/main.py` and create a new file named `path/to/hello.py`:
+
+1. Remove `hello()` from `path/to/main.py`
+2. Import `hello()`.
+3. Create a new `path/to/hello.py` file with `hello()` in it.
+
+Here's the CEDARScript script:
+
+{fence[0]}CEDARScript
+-- Remove `hello()` from `path/to/main.py`:
+UPDATE FILE "path/to/main.py"
+DELETE FUNCTION "hello";
+
+--  Import `hello()`.
+UPDATE FILE "path/to/main.py"
+INSERT AFTER LINE '''from flask import Flask'''
+WITH CONTENT '''
+from hello import hello
+''';
+
+-- Create a new `hello.py` file with `hello()` in it
+CREATE FILE "path/to/hello.py"
+WITH CONTENT '''
+def hello():
+    "print a greeting"
+
+    print("hello")
+''';
+{fence[1]}
+</banterml:role.assistant>
+
+<banterml:role.user>
+```file.py
+import os
+
+def warm_cache_worker():
+    while True:
+        time.sleep(1)
+        if self.warming_pings_left <= 0:
+            continue
+        now = time.time()
+        if now < self.next_cache_warm:
+            continue
+
+        self.warming_pings_left -= 1
+        self.next_cache_warm = time.time() + delay
+```
+Log the value of now, and then call now_changed with now as argument
+</banterml:role.user>
+<banterml:role.assistant>
+To make this change, we need to modify the function `warm_cache_worker()`:
+
+1. Import the logging module at the top of the file.
+2. Add a logging statement to print the value of `now` after it is assigned.
+
+Here's the CEDARScript script:
+
+{fence[0]}CEDARScript
+-- Import the logging module.
+-- `BEFORE LINE PREFIX '''import''' OFFSET 0` means: before the first line that begins with the word import.
+UPDATE FILE "file.py"
+INSERT BEFORE LINE PREFIX '''import ''' OFFSET 0
+WITH CONTENT '''
+import logging
+''';
+-- Using `BEFORE .. OFFSET 0` means before the FIRST match
+
+-- Add a logging statement to print the value of 'now':
+UPDATE FUNCTION "warm_cache_worker"
+FROM FILE "file.py"
+INSERT AFTER LINE PREFIX '''now = time.time'''
+WITH CONTENT '''
+logging.debug(f"Cache warming attempt at {{}}; Will validate its value in the next line...", now)
+now_changed(now)
+''';
+{fence[1]}
+</banterml:role.assistant>
+
+## More...
+
+<banterml:role.user>
+```file.py
+class MyClass(NamedTuple):
+    instance_var_1: str = '4r3'
+    def myFirstFunction(self, name: str, age: int):
+        """Lorem ipsum dolor sit amet
+        Args:
+            name: name
+            age: age
+        """
+        if age > 50
+          return a + 5 + 7 + 9
+        if age > 70
+          a = doSomething(name, age)
+          return a + 5 + 1 + len(self.instance_var_1) * 7
+      def middle(self):
+          pass
+      def anotherFunction(self, name: str, age: int):
+          # Check and store in 'b' and 'bb'
+          # Remember NOT to call self.myFirstFunction(a, b) ever !!!
+          b = checkVal(45, "strict", self.myFirstFunction(name, age), 8, "tops")
+          ba = 4 + checkVal(77, "strict", "z" + self.myFirstFunction("x" + name, 4 + age), 8, "tops")
+          bb = checkVal(7, "lax", self.myFirstFunction(name, age), 2, "bottom")
+          c = checkVal(4, "strict", self.myFirstFunction("x", 4), 8, "tops")
+          return b + bb
+```
+Refactor method myFirstFunction to be a stand alone, top level function.
+</banterml:role.user>
+<banterml:role.assistant>
+Here's my plan to make this refactoring:
+1. Move the `myFirstFunction()` method from the `MyClass` class, placing it at the top level, just before the line where its class starts;
+2. Update the copied function to remove references to `self` and declare any required instance members as function parameters;
+3. Update call sites of the method `myFirstFunction` to call the new top-level function with the same name, passing any instance members as arguments;
+
+Here's the CEDARScript script:
+
+{fence[0]}CEDARScript
+-- 1. Move the `myFirstFunction` method from the `MyClass` class, placing it at the top level, just before the line where its class starts.
+UPDATE METHOD "MyClass.myFirstFunction"
+  FROM FILE "file.py"
+MOVE WHOLE
+INSERT BEFORE CLASS "MyClass"
+  RELATIVE INDENTATION 0; -- the block of code being moved wil start at the same indentation as the 'reference point'
+
+-- 2. Update the copied function to remove references to `self`, now declaring `instance_var_1` as parameter
+/* Match the line with the prefix that contains the OLD version of the line (`def myFirstFunction(self,`) and
+replaces the whole line with the NEW version we desire: `def myFirstFunction(instance_var_1: str,`
+*/
+UPDATE FUNCTION "myFirstFunction"
+  FROM FILE "file.py"
+REPLACE WHOLE WITH CASE
+  WHEN REGEX r'''def myFirstFunction''' THEN SUB
+    r'''def myFirstFunction\(self, name: str, age: int\):'''
+    r'''def myFirstFunction(instance_var_1: str, name: str, age: int):'''
+  WHEN REGEX r'''self\.instance_var_1''' THEN SUB
+    r'''self\.(instance_var_1)''' -- capture the part we want to keep, leaving out the part to remove
+    r'''\1''' -- replace the match with the part we captured in group 1
+END;
+
+-- 3. Update ALL call sites of the method `myFirstFunction` to call the new top-level function with the same name, passing `instance_var_1` as argument
+-- Make sure to search for the OLD content and replace it with the NEW content we want
+UPDATE METHOD "MyClass.anotherFunction"
+  FROM FILE "file.py"
+REPLACE BODY WITH CASE
+  WHEN LINE PREFIX '''#''' THEN CONTINUE
+  WHEN REGEX r'''self\.myFirstFunction\(''' THEN SUB
+    r'''self\.(myFirstFunction\()''' -- capture the part we need to keep
+    r'''\1''' -- replace the match with the part we need to keep (was captured in group 1)
+END;
+{fence[1]}
+</banterml:role.assistant>
+
+<banterml:role.user>
+```file.py
+class GreeterClone:
+    def __init__(self):
+        pass
+    def print_greeting_number(self):
+        pass
+    def print_with_prefix(self, prefix: str, name: str):
+        pass
+    def greet(self, name):
+        pass
+class Greeter:
+    def __init__(self):
+        pass
+    def print_greeting_number(self):
+        pass
+    def print_with_prefix(self, prefix: str, name: str):
+        pass
+    def greet(self, name):
+        print('...Nice to meet you!')
+        print("Hope you're doing well!")
+```
+
+In `Greeter` class above, we have placeholder methods that need to be implemented, and the last method should:
+1. Print the name using prefix `Hi, ` before it does anything else (should be the very first thing);
+2. Print how many greetings have been printed so far as the last thing.
+</banterml:role.user>
+<banterml:role.assistant>
+Here's my plan to implement the requested changes:
+1. Add instance variable `greeting_count: int` to the `Greeter` class to keep track of the greeting count;
+2. Implement the `print_with_prefix()` method to print parameter `name` prefixed with the `prefix` parameter;
+3. Insert a call to the `print_with_prefix()` method at the top of the last method (`greet()`);
+4. Insert code at the bottom of the `greet()` method to print the greeting count and increment it.
+
+Here's the CEDARScript script:
+
+{fence[0]}CEDARScript
+-- 1. Add instance variable `greeting_count: int` to the `Greeter` class to keep track of the greeting count
+-- As method `__init__` exists in more than 1 class, use `parent chain` to disambiguate
+UPDATE METHOD "Greeter.__init__"
+  FROM FILE "file.py"
+REPLACE BODY
+WITH CONTENT r'''
+        self.greeting_count: int = 0
+''';
+
+-- 2. Implement the `print_with_prefix()` method to print parameter `name` prefixed with the `prefix` parameter;
+-- As method `print_with_prefix` exists in more than 1 class, we specify which one we want to reference
+UPDATE METHOD "Greeter.print_with_prefix"
+  FROM FILE "file.py"
+REPLACE BODY
+WITH CONTENT r'''
+        print(f"{{prefix}}{{name}}")
+''';
+
+-- 3. Insert a call to the `print_with_prefix()` method at the top of the last method (`greet`);
+-- As method `greet` exists in more than 1 class, we specify which one we want to reference
+UPDATE CLASS "Greeter"
+  FROM FILE "file.py"
+INSERT INTO METHOD "greet" TOP -- at the TOP of the function body
+WITH CONTENT r'''
+        print_with_prefix('Hi, ', name)
+''';
+
+-- 4. Insert code at the bottom of the body of `greet()` method to increment the greeting count and print it.
+-- As method `greet` exists in more than 1 class, we specify which one we want to reference
+UPDATE CLASS "Greeter"
+  FROM FILE "file.py"
+INSERT INTO METHOD "greet" BOTTOM
+WITH CONTENT r'''
+        self.greeting_count += 1
+        print(f'There have been {{self.greeting_count}} greetings so far.')
+''';
+{fence[1]}
+
+Notes to self:
+1. As the code to be changed was provided in the message, we're using file name "file.py".
+2. When using `INTO`, the body of the function or class is implicit, so we can NEVER write `BODY` after `INTO`.
+</banterml:role.assistant>
+
+<banterml:role.user>
+```file.py
+class A0:
+    def __init__(self, v: int):
+        self.instance_var = v
+    def calc1(self, a):
+        return a * self.instance_var
+    def calc2(self, a):
+        # Call calc1...
+        c = self.calc1(5)
+class A:
+    def __init__(self, v: int):
+        self.instance_var = v
+    def calc1(self, a):
+        """
+        'calc1' is a method
+        that takes 'a' as parameter.
+        and then
+        perform a calculation
+        that multiplies 'a' (the first argument
+        after 'self') by a value stored in 'self.instance_var'.
+        """
+        # Some more comments...
+        return a * self.instance_var
+    def calc2(self, a):
+        # c is declared
+        c = 4
+        # print
+        print(c)
+        # Call calc1...
+        c = self.calc1(
+            2
+        )
+        # print
+        print(c)
+        # inc c
+        c += 1
+        # print
+        print(c)
+```
+Refactor the `calc1` method in the `A` class to be a stand alone, top level function.
+</banterml:role.user>
+<banterml:role.assistant>
+Here's my plan to implement the requested changes:
+1. Move the `calc1()` method from the `A` class, placing it at the top level, just before the line where its class starts;
+2. Update the copied function to remove references to `self`, now declaring `instance_var` as parameter;
+3. Update ALL call sites of the method `calc1()` to call the new top-level function with the same name, passing `instance_var` as argument;
+
+Here's the CEDARScript script:
+
+{fence[0]}CEDARScript
+-- 1. Move the `calc1` method from the `A` class, placing it at the top level, just before the line where its class starts
+-- As method `calc1` exists in more than 1 class, we specify which one we want to reference
+UPDATE METHOD "A.calc1"
+  FROM FILE "file.py"
+MOVE WHOLE
+INSERT BEFORE CLASS "A"
+  RELATIVE INDENTATION 0;
+
+-- 2. Update the copied function to remove references to `self`, now declaring `instance_var` as parameter
+-- Make sure to search for the OLD content and replace it with the NEW content we want
+UPDATE FUNCTION ".calc1"
+  FROM FILE "file.py"
+REPLACE WHOLE WITH CASE
+  WHEN REGEX r'''def calc1''' THEN SUB
+    r'''def calc1\(self, a\):'''
+    r'''def calc1(instance_var: int, a):'''
+  WHEN REGEX r'''self\.instance_var''' THEN SUB
+    r'''self\.(instance_var)''' -- match and capture the part of the old code we need to keep
+    r'''\1''' -- replace the match with the part we need to keep (was captured in group 1)
+END;
+
+-- 3. Update ALL call sites of the method `calc1` to call the new top-level function with the same name, passing `instance_var` as argument
+UPDATE METHOD "A.calc2"
+  FROM FILE "file.py"
+REPLACE BODY WITH CASE
+  WHEN REGEX r'''self\.calc1\(''' THEN SUB
+    r'''(self\.)(calc1\()'''
+    r'''\2\1instance_var, '''
+END;
+{fence[1]}
+</banterml:role.assistant>
+
+<banterml:role.user>
+```file.py
+class A0:
+    def __init__(self, v: int):
+        self.instance_var = v
+    def calc1(self, a):
+        return a * self.instance_var
+    def calc2(self, a):
+        # Call calc1...
+        # I'm a bad line, get rid of me!
+        c = self.calc1(5)
+class A:
+    def __init__(self, v: int):
+        self.instance_var = v
+    def calc1(self, a):
+        return a * self.instance_var
+    def calc2(self, a):
+        # print a
+        # I'm a bad line, get rid of me!
+        print(a)
+        # Call calc1...
+        c = ["x", str(self.calc1(
+            5), "xx"]
+        c = ["x", str(self.calc1(
+            6), "xx"]
+        # Done...
+        return c
+```
+Refactor the `calc1` method in the `A` class to be a stand alone, top level function.
+Also, there's some 'bad' lines that clearly need to be removed.
+</banterml:role.user>
+<banterml:role.assistant>
+Here's my plan to implement the requested changes:
+1. Move the `calc1()` method from the `A` class, placing it at the top level, just before the line where its class starts;
+2. Update the copied function to remove references to `self`, now declaring `instance_var` as parameter;
+3. Update ALL call sites of the method `calc1()` to call the new top-level function with the same name, passing `instance_var` as argument;
+4. Delete the bad line;
+
+Here's the CEDARScript script:
+
+{fence[0]}CEDARScript
+-- 1. Move the `calc1` method from the `A` class, placing it at the top level, just before the line where its class starts
+-- As method `calc1` exists in more than 1 class, we specify which one we want to reference
+UPDATE METHOD "A.calc1"
+  FROM FILE "file.py"
+MOVE WHOLE
+INSERT BEFORE CLASS "A"
+  RELATIVE INDENTATION 0;
+
+-- 2. Replace the whole copied function to remove references to `self` and declare `instance_var` as parameter
+-- Now, `calc1` exists as a top-level function before class `A`
+-- It's better to replace the whole function because the function is small
+UPDATE FUNCTION ".calc1" OFFSET 1
+  FROM FILE "file.py"
+REPLACE WHOLE
+WITH CONTENT r'''
+def calc1(instance_var: int, a):
+    return a * instance_var
+''';
+
+-- 3. Update ALL call sites of the method `calc1` to call the new top-level function with the same name, passing `instance_var` as argument
+UPDATE FUNCTION "A.calc2"
+  FROM FILE "file.py"
+REPLACE BODY WITH CASE
+  WHEN REGEX r'''^# I'm a bad''' THEN REMOVE
+  WHEN REGEX r'''self\.calc1\(''' THEN SUB
+    r'''(self\.)(calc1\()'''
+    r'''\2\1instance_var, '''
+END;
+
+-- 4. Delete the single remaining bad line (it's in the other method)
+UPDATE FILE "file.py"
+DELETE LINE REGEX r'''^# I'm a bad'''; -- Removes the whole line that starts with that prefix
+{fence[1]}
+</banterml:role.assistant>
+
+<banterml:role.user>
+```file.py
+def calc1(a):
+    return a * 7.0
+def calc2(a):
+    c = ["x", str(calc1(
+        5), "xx")]
+    c = ["x", str(calc1(
+        6), "xx")]
+    # Done...
+    return c
+```
+Refactor the calc1 function to introduce tax: float as first parameter.
+The function should use the new parameter instead of 7.
+Function calc2 should also get this new parameter, but as last parameter and with name base_tax and default value 1.3.
+</banterml:role.user>
+<banterml:role.assistant>
+Here's my plan to implement the requested changes:
+1. Update the function signature of `calc1()` to add parameter `tax: float` as the first one and use the new parameter instead of `7`;
+2. Update the function signature of `calc2()` to add parameter `base_tax: float = 1.3` as the last one;
+3. Update ALL call sites of `calc1()` to pass `base_tax` as the first argument;
+
+Here's the CEDARScript script:
+
+{fence[0]}CEDARScript
+-- 1. Update the function signature of `calc1()` to add parameter `tax: float` as the first one and use the new parameter instead of `7`
+UPDATE FUNCTION "calc1"
+  FROM FILE "file.py"
+REPLACE WHOLE
+WITH CONTENT r'''
+def calc1(tax: float, a):
+    return a * tax
+''';
+
+-- 2. Update the function signature of `calc2()` to add parameter `base_tax: float = 1.3` as the last one
+-- 3. Update ALL call sites of `calc1()` to pass `base_tax` as the first argument
+UPDATE FUNCTION "calc2"
+  FROM FILE "file.py"
+REPLACE WHOLE WITH CASE
+  WHEN REGEX r'''def calc2\(''' THEN SUBS
+    r'''def calc2\(a\):'''
+    r'''def calc2(a, base_tax: float = 1.3):'''
+  WHEN REGEX r'''calc1\(''' THEN SUB
+    r'''calc1\('''
+    r'''calc1(base_tax, '''
+END;
+{fence[1]}
+</banterml:role.assistant>
+
+<banterml:role.user>
+```file.py
+class A:
+    def _calc(self, a):
+        return a
+    def _check(self, a: int, b, c):
+        if a > 0:
+            return self._calc(
+                "a thing or two"
+            )
+        else:
+            return list(
+                self._calc(
+                    my_list.include(self._candidate(
+                        a, "string 1", 4
+                    ))
+                    for index, item in enumerate(a.the_elements)
+                )
+            )
+
+    def _candidate(self, existing_params):
+        return a
+```
+Refactor the `_candidate` method to be a stand alone, top level function.
+</banterml:role.user>
+<banterml:role.assistant>
+Here's my plan to implement the requested changes:
+1. Move the `_candidate()` method from the `A` class, placing it at the top level, just before the line where its class starts;
+2. Update the copied function to remove references to `self`;
+3. Update ALL call sites of the method `_candidate()` to call the new top-level function with the same name;
+
+Here's the CEDARScript script:
+
+{fence[0]}CEDARScript
+-- 1. Move the `_candidate()` method from the `A` class, placing it at the top level, just before the line where its class starts
+UPDATE METHOD "_candidate"
+  FROM FILE "file.py"
+MOVE WHOLE
+INSERT BEFORE CLASS "A"
+  RELATIVE INDENTATION 0;
+
+-- 2. Update the copied function to remove references to `self`
+UPDATE FUNCTION "_candidate"
+  FROM FILE "file.py"
+REPLACE WHOLE WITH CASE
+  WHEN REGEX r'''def _candidate\(''' THEN SUB
+    r'''def _candidate\(self, existing_params\):'''
+    r'''def _candidate(existing_params):'''
+END;
+
+-- 3. Update ALL call sites of the method `_candidate()` to call the new top-level function with the same name
+UPDATE METHOD "_check"
+  FROM FILE "file.py"
+REPLACE WHOLE WITH CASE
+  WHEN REGEX r'''self\._candidate\(''' THEN SUB
+    r'''self\.(_candidate\()'''
+    r'''\1'''
+END;
+{fence[1]}
+</banterml:role.assistant>
+
+<banterml:role.user>
+```file.py
+class A:
+    def _calc(self, a):
+        return a
+    def _check(self, a: int, b, c):
+        if a > 0:
+            return self._candidate( "a thing or two"
+            )
+        else:
+            return list(
+                self._calc(
+                    my_list.include(self._candidate(
+                        a, "string 1", 4
+                    )))
+                    for index, item in enumerate(a.the_elements)
+                )
+            )
+
+    def _candidate(self, existing_params):
+        return a
+```
+Refactor the `_candidate` method to be a stand alone, top level function.
+</banterml:role.user>
+<banterml:role.assistant>
+Here's my plan to implement the requested changes:
+1. Move the `_candidate()` method from the `A` class, placing it at the top level, just before the line where its class starts;
+2. Update the copied function to remove references to `self`;
+3. Update ALL call sites of the method `_candidate()` to call the new top-level function with the same name;
+
+Here's the CEDARScript script:
+
+{fence[0]}CEDARScript
+-- 1. Move the `_candidate()` method from the `A` class, placing it at the top level, just before the line where its class starts
+-- As method `_candidate` only exists in one place, it's unambiguous, but this time we wmust try the alternative form `UPDATE CLASS..MOVE FUNCTION` (instead of `UPDATE FUNCTION..MOVE WHOLE`) because the latter failed last time we tried.
+UPDATE CLASS "A"
+  FROM FILE "file.py"
+MOVE METHOD "_candidate"
+INSERT BEFORE CLASS "A"
+  RELATIVE INDENTATION 0;
+
+-- 2. Update the copied function to remove references to `self`
+UPDATE FUNCTION "_candidate"
+  FROM FILE "file.py"
+REPLACE WHOLE WITH CASE
+  WHEN REGEX r'''def _candidate\(''' THEN SUB
+    r'''def _candidate\(self, existing_params\):'''
+    r'''def _candidate(existing_params):'''
+END;
+
+-- 3. Update ALL call sites of the method `_candidate()` to call the new top-level function with the same name
+-- There are two or more of this line prefix 'self._candidate'
+UPDATE METHOD "A._check"
+  FROM FILE "file.py"
+REPLACE BODY WITH CASE
+  WHEN REGEX r'''self\._candidate\(''' THEN SUB
+    r'''self\.(_candidate\()'''
+    r'''\1'''
+END;
+{fence[1]}
+</banterml:role.assistant>
+
+</list>

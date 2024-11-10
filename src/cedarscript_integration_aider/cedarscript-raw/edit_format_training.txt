@@ -1,0 +1,753 @@
+## CEDARScript Quick Reference Guide
+It's a *SQL-like* language used to express code transformations (via DDL and DML Write commands) and
+to help an LLM examine and understand the codebase (via DML Read-Only command).
+<core-commands>
+<DML>
+# Read-only command
+<syntax-high-level>
+<dl>
+<dt>SELECT <target> FROM <source> [WHERE <condition>] [LIMIT <n>];</dt>
+<dd>Read-only command. Used to glean information about the code base being examined.</dd>
+<dd>Use cases:
+- Understanding code structure;
+- Finding relevant files/classes/functions/variables that may deal with a certain topic
+-- (ex.: if a user may want to find all places that deal with payments, search for 'payment')
+- Displaying code elements to user
+</dd>
+</dl>
+</syntax-high-level>
+
+# Code Modification commands
+<syntax-high-level>
+<dl>
+<dt>UPDATE <update-target> <update-action> [WITH <contents>];</dt>
+<dd>The main CEDARScript UPDATE command structure. Square brackets denote optional parts.</dd>
+<dd>Use cases:
+- Creating or replacing classes, functions or other code in existing files/classes/functions etc
+- Replacing specific lines of existing code
+- Performing complex code transformations using refactoring patterns
+- etc...
+</dd>
+
+# Where:
+
+<dt>update-target: [<identifier_matcher> FROM] FILE "<path>"</dt>
+<dd>Specifies what to update:
+- Direct file update (FILE "path"); Sets *reference point* for *vertical positioning* to the first line in the file.
+- A specific <identifier_matcher> FROM FILE "path"; Sets *reference point* for *vertical positioning* to the 
+first line where the identifier is declared (function signature, etc)
+</dd>
+<dd>Sets *reference point* for *vertical positioning* (Context-Relative Line Numbers)</dd>
+
+<dt>update-action: (<action-mos> | <action-region>)</dt>
+<dd>Possible actions: DELETE | MOVE | INSERT | REPLACE</dd>
+<dd>Sets *reference point* for *horizontal positioning* (Relative Indent Level)</dd>
+<dd>The reference point is the term chosen for the (MOVE|INSERT|REPLACE) action</dd>
+
+<dd>Optional specification of new content:
+- <content_literal>: direct text using <string>
+- <content_from_segment>: content taken from existing code
+- <line_filter>: filters input lines
+</dd>
+
+<dt>action-mos   : ( <update_delete_region_clause> | MOVE <marker_or_segment> <update_move_clause_destination> | <insert_clause> WITH <contents> | <replace_region_clause> | WITH (<contents> | <line_filter>) )</dt>
+<dd>Use when update-target is a FILE</dd>
+<dt>action-region: ( <update_delete_region_clause> | MOVE <region_field>      <update_move_clause_destination> | <insert_clause> WITH <contents> | <replace_region_clause> | WITH (<contents> | <line_filter>))</dt>
+<dd>Use when update-target is an <identifier_matcher></dd>
+
+</dl>
+</syntax-high-level>
+
+<syntax-detailed>
+<dl>
+
+# 3 forms are valid:
+
+1. <dt>UPDATE FILE "<path>" <action-mos></dt>
+<dd>Sets *reference point* for *vertical positioning* to the first line in the file</dd>
+
+2. <dt>UPDATE <identifier_matcher> FROM FILE "<path>" <action-region></dt>
+<dd>Sets *reference point* for *vertical positioning* to the first line where the identifier is declared (function signature, etc)</dd>
+
+3. <dt>UPDATE PROJECT REFACTOR LANGUAGE "<string>" WITH PATTERN '''<string>''' [WITH GOAL '''<string>''']</dt>
+<dd>Only languages "Rope" (for Python codebases) and "Comby" (for any codebase) are supported</dd>
+<dd>Used for advanced pattern-based refactorings on any kind of code or data format (as HTML or JSON)</dd>
+<dd>LANGUAGE "Rope": Indirectly use the `Restructure` class in the 'Rope' refactoring library to perform complex code transformations using patterns</dd>
+<dd>LANGUAGE "Comby": Use lightweight templates to easily search and change code or data formats. Comby is designed to work on any language or data format</dd>
+
+# Where:
+
+<dt>update_delete_region_clause: DELETE <region_field></dt>
+<dd>Removes a region of code in a file</dd>
+
+<dt>insert_clause: INSERT <relpos_bai></dt>
+<dd>Specifies where content will be placed</dd>
+<dd>Used as reference point for *horizontal positioning* only (*NOT* for vertical positioning)</dd>
+
+<dt>replace_region_clause: REPLACE <region_field></dt>
+<dd>Defines what region to be replaced</dd>
+<dd>Used as reference point for `relative indent level` only (*NOT* for context-relative line numbers)</dd>
+
+<dt>marker_or_segment: (<marker> | <segment>)</dt>
+<dd></dd>
+<dt>marker: (<line_with_offset> | <identifier_matcher>)</dt>
+<dd></dd>
+
+<dt>line_matcher: [LINE] ('''<string>''' | <context-relative-line-number> | REGEX r'''<regex>''' | PREFIX '''<string>''' | SUFFIX '''<string>''' | INDENT LEVEL <integer> | EMPTY)</dt>
+<dd>Points to specific line. For all comparisons below, the matcher *only sees* a stripped version of the line
+(that is, after stripping leading and trailing whitespace characters)</dd>
+<dd>Possible arguments:
+- <string>: its *stripped contents*, if it's unambiguous (don't use line content if the line appears multiple times);
+- <context-relative-line-number>: This can help if other types failed;
+- REGEX: a regular expression pattern matching the stripped line; *MUST* use a raw string (one that starts with r''')
+- PREFIX: matches if the stripped line *begins* with a prefix (anchored to the start);
+- SUFFIX: matches if the stripped line *ends* wiht a suffix (anchored to the end);
+- INDENT LEVEL: line has specific indent level 
+- EMPTY: matches if the stripped line is empty
+</dd>
+
+<dt>line_with_offset: <line_matcher> [OFFSET <offset>]</dt>
+<dd>Points to a specific <line_matcher> - see <offset> below</dd>
+
+<dt>identifier_matcher: (VARIABLE | FUNCTION | METHOD | CLASS) "[parent-chain.]<name>" [OFFSET <offset>]</dt>
+<dd>Name of an identifier</dd>
+<dd>If there are 2 or more with same name, prefixed it with its *parent chain* (names of its parents separated by a dot) to disambiguate it.
+Another way to disambiguate is to use `OFFSET <n>` to pinpoint one.
+</dd>
+<dd>Tip: `OFFSET 0` == first match! Remember to use `OFFSET 0` when you want to specify the FIRST match/occurrence</dd>
+
+<dt>parent-chain: string</dt>
+<dd>A dot-separated list of parents to uniquely identify an <identifier></dd>
+<dd>When a reference is ambiguous (multiple matches exist for it), it must be disambiguated. Parent chains are the BEST way to do that</dd>
+<dd>Examples:
+- "name" (no parent chain, matches at any nesting level, including at the top level)
+- ".name" (only root in the chain (so it's anchored), only matches "name" if it's at the top level of the file)
+- "C.name" (1 parent in the chain, matches "name" as long as "C" is a direct parent of it)
+- "B.C.name" (2 parents in the chain, requires "B" to be a direct parent of "C", and "C" a direct parent of "name")
+- ...
+</dd>
+<dt>offset: integer</dt>
+<dd>Determines how many matches to skip</dd>
+<dd>When a reference is ambiguous (multiple matches exist for it), it must be disambiguated. Setting an OFFSET is a way to do that</dd>
+<dd>Examples:
+OFFSET 0: FIRST match;
+OFFSET 1: skips 1 matches, so points to the *2nd* match;
+OFFSET 2: skips 2 matches, so points to the *3rd* match;
+OFFSET n: skips n matches, thus specifies the (n+1)-th match;
+</dd>
+<dd>Examples with context:
+- UPDATE FUNCTION "my_func" OFFSET 0  -- Explicitly target FIRST match
+- UPDATE FUNCTION "my_func" OFFSET 1  -- Target SECOND match
+</dd>
+
+<dt>segment: SEGMENT <relpos_segment_start> <relpos_segment_end></dt>
+<dd>Points to segment identified by a start and an end pointer</dd>
+
+<dt>region_field: (BODY | WHOLE | <marker_or_segment>)</dt>
+<dt>WHOLE: keyword</dt>
+<dd>the whole chosen item</dd>
+
+<dt>BODY: keyword</dt>
+<dd>Only the function/method body (its *signature* is *NOT* considered)</dd>
+
+<dt>relpos_segment_start: STARTING (<relpos_at> | <relpos_beforeafter>)</dt>
+<dd></dd>
+
+<dt>relpos_segment_end: ENDING (<relpos_at> | <relpos_beforeafter>)</dt>
+<dd></dd>
+
+<dt>relpos_at: AT <marker></dt>
+<dd></dd>
+
+<dt>relpos_beforeafter: (BEFORE | AFTER) <marker></dt>
+<dd>Points to region immediately before or after <marker></dd>
+<dt>relpos_into: INTO <identifier_matcher> (TOP | BOTTOM)</dt>
+<dd>Points to inside `identifier_matcher` (either the body's TOP or BOTTOM region). The *horizontal reference point* is the body</dd>
+<dd>Use cases: When inserting content (e.g. a docstring or a return statement) either at the TOP or BOTTOM of a function or class body</dd>
+
+<dt>relpos_bai: (<relpos_beforeafter> | <relpos_into>)</dt>
+<dd></dd>
+<dt>relative_indentation: RELATIVE INDENTATION <relative-indent-level></dt>
+<dd>The reference point for the horizontal positioning of <relative_indentation> is the <marker> in (<insert_clause> | <replace_region_clause>)</dd>
+
+## Content Sources
+
+<dt>contents: (<content_literal> | <content_from_segment> )</dt>
+
+<dt>content_literal: CONTENT '''<string>'''</dt>
+<dd>Examples and enclosing variations (single quote, double quote and raw):</dd>
+<dd>CONTENT '''    return "x"''' -- if the content has *double* quotes (") inside, use the *single* quote variation (''')</dd>
+<dd>CONTENT r'''    s = re.sub(r"[^\w\s-]", "", s)''' -- a raw string is required when there are backslashes inside content</d>
+<dd>CONTENT r"""
+    my_multiline_text = r'''test
+        multi
+        line\.
+    '''
+""" -- if the content has *single* quotes (') inside, use the double quote variation (""")</dd>
+<dd>CONTENT r'''basic''' -- best to be safe and always use the raw string variation (r''' or r""")</dd>
+<dt>content_from_segment: [singlefile_clause] <marker_or_segment> [relative_indentation]</dt>
+<dd></dd>
+
+<dt>line_filter: (<case_stmt> | <ed_stmt>)</dt>
+<dd>Sends input lines to a filter for transformation and returns the resulting lines</dd>
+
+<dt>ed_stmt: ED r'''<string>'''</dt>
+<dd>Executes a *GNU ed* (the UNIX line editor) script to transform input lines</dd>
+
+<dt>case_stmt: CASE WHEN <line_matcher> THEN <case_action></dt>
+<dd>This is the reliable and versatile `CASE WHEN...THEN` line filter.
+Filters each input line according to `WHEN...THEN` pairs:</dd>
+<dd>WHEN: A <line_matcher></dd>
+<dd>THEN: Allows you to choose which *action* to take for its matched lines</dd>
+<dd><content_literal> or <content_from_segment>: Replace with text (cannot use regex capture groups)</dd>
+
+<dt>loop_control: (CONTINUE | BREAK)</dt>
+<dd>BREAK: Stops processing the lines, leaving the rest of the lines untouched</dd>
+<dd>REMOVE: Removes the line</dd>
+
+<dt>case_action: ( <loop_control> | REMOVE [loop_control] | SUB r'''<regex>''' r'''repl''' [loop_control] | INDENT <integer> [loop_control] | (<content_literal> | <content_from_segment>) [loop_control] )
+<dd>CONTINUE: Leaves the line as is and goes to the next</dd>
+<dd>INDENT: Increases or decreases indent level. Only positive or negative integers</dd>
+<dd>SUB: Substitutes *ONLY* the part of the line that matches <regex> with <repl> (regex capture groups enabled: \1, \2, etc).
+
+<dl>Examples of substituting <regex> matches with `<repl>`:
+
+<dt>Replace `self,` with `replacement_param: str,`</dt>
+<dd>
+<original-line>def function_name(self, param_to_keep_1: int, param_to_keep_2: str):</original-line>
+<regex>r'''def function_name\(self, param_to_keep_1: int, param_to_keep_2: str\):'''</regex>
+<repl>r'''def function_name(replacement_param: str, param_to_keep_1: int, param_to_keep_2: str):'''</repl>
+<cedarscript>
+UPDATE FUNCTION "function_name"
+  FROM FILE "file.py"
+REPLACE WHOLE WITH CASE
+  WHEN REGEX r'''def function_name\(''' THEN SUB
+    r'''def function_name\(self, param_to_keep_1: int, param_to_keep_2: str\):'''
+    r'''def function_name(replacement_param: str, param_to_keep_1: int, param_to_keep_2: str):'''
+END;
+</cedarscript>
+<line-after-match-replacement>def function_name(replacement_param: str, param_to_keep_1: int, param_to_keep_2: str):</line-after-match-replacement>
+</dd>
+
+<dt>Remove references to `self` from function signature</dt>
+<dd>
+<original-line>def function_name(self, existing_params):</original-line>
+<regex>r'''def function_name\(self, existing_params\):'''</regex>
+<repl>r'''def function_name(existing_params):'''</repl>
+<line-after-match-replacement>def function_name(existing_params):</line-after-match-replacement>
+</dd>
+
+<dt>Transform method call into function call and also prepend new parameter to the call</dt>
+<dd>Notice how the rest of the line isn't matched; Only the part that was matched is replaced:
+<original-line>calculation_result = self.calc(existing_params) + self.calc_too(1, 3)</original-line>
+<regex>r'''(self\.)(calc\()'''</regex>
+<repl>r'''\2\1new_member_arg, '''</repl>
+<line-after-match-replacement>calculation_result = calc(self.new_member_arg, existing_params) + self.calc_too(1, 3)</line-after-match-replacement>
+</dd>
+
+<dt>Replace print calls with logging.info calls</dt>
+<dd>Notice how the rest of the line isn't matched; Only the part that was matched is replaced:
+<original-line>while true; begin; a += 1; print(a); end</original-line>
+<regex>r'''print\((.*)\)'''</regex>
+<repl>r'''logging.info(\1)'''</repl>
+<line-after-match-replacement>while true; begin; a += 1; logging.info(a); end</line-after-match-replacement>
+</dd>
+
+<dt>Convert list comprehension to for loop</dt>
+<dd>
+<original-line>squares = [x2 for x in range(10)]</original-line>
+<regex>r'''\[(.?) for (.?) in (.*)\]'''</regex>
+<repl>r'''squares = []\nfor \2 in \3: squares.append(\1)'''</repl>
+<line-after-match-replacement>
+squares = []
+for x in range(10): squares.append(x2)
+</line-after-match-replacement>
+</dd>
+
+</dl> # END of examples 
+</dd> # END of SUB
+
+<dt>regex: *MUST* use a raw string (one that starts with r''')</dt>
+<dd>Matches a part of the line. <CRUCIAL>Only the part that was matched will be replaced by <repl>, keeping the rest of the line intact</CRUCIAL>
+Allows regex capture groups by enclosing parts of the expression in parentheses (without escaping them);
+To *match* parentheses, you *MUST* escape them as in the 2 examples below:
+1. to match left parenthesis: \(
+2. to match right parenthesis: \)
+
+</dd>
+<dt>repl: *MUST* use a raw string (one that starts with r''')</dt>
+<dd>A replacement that can recover regex capture groups: \1, \2, etc.
+*ONLY* replaces the part of the line that was matched by <regex>, keeping the rest of the line intact!
+*DO NOT* escape parentheses inside <repl> !!!
+</dd>
+
+<dt>update_move_clause_destination: [TO FILE "<path>"] <insert_clause> [relative_indentation]</dt>
+
+## Horizontal Positioning: Relative Indent Level
+
+<dt>relative-indent-level: integer</dt>
+<dd>Determines *horizontal positioning* as a *relative* indent *level* compared to the *horizontal positioning reference point*
+(the reference point is the <marker> chosen for the <update-action> (MOVE|INSERT|REPLACE))</dd>
+<dd>The relative indent level *MUST* change logically with code structure:
+- Increment when entering a nested block (if/for/while/try etc...);
+- Decrement when exiting a nested block;
+</dd>
+<dd>Examples:
+0: *Same* level as reference point (this is the default and can be omitted)
+1: one more indent level than reference point;
+-1: one *less* indent level than reference point;
+</dd>
+<dd>NOTE: If you get `E999 IndentationError` message or any other indentation error, check that your relative indent levels 
+follow these rules</dd>
+
+## Vertical Positioning: Context-Relative Line Numbers
+<dt>context-relative-line-number: integer</dt>
+<dd>Determines *vertical positioning*. Represents the relative line number compared to the *vertical positioning reference point*
+(the reference point is the target chosen for the <update-target> - either the file itself or a specific <identifier_matcher> in it)</dd>
+<dd>Number 1 points to the *first* line of its reference point; 2 points to the second, ...</dd>
+<dd>Number 0 points to the line that comes *BEFORE* its reference point; -1 points to 2 lines before, ...</dd>
+
+</dl>
+</syntax-detailed>
+
+</DML>
+<DDL>
+CREATE FILE "<path>" WITH <content_literal>;
+RM FILE "<path>";
+MV FILE "<source>" TO "<target>";
+</DDL>
+</core-commands>
+
+## Cookbook
+
+<codebase>
+```greenfield-style.py
+#  Notice how everything in this file is basically empty.
+# When modifying this kind of file, it's better to just REPLACE functions/methods that are basically empty.
+
+def is_zero(num):
+    pass
+
+def root():
+
+    def nested_1():
+
+        def is_even():
+            pass
+
+        def nested_2():
+
+            def is_odd():
+                pass
+
+class Card:
+
+    def __init__(self, rank):
+        pass
+
+    def __str__(self):
+        return "{self.rank}{self.suit}"
+
+```
+
+```Makefile
+.PHONY: all version play build test dist clean
+
+all: clean build version test
+
+version:
+    git describe --tags
+    python -m setuptools_scm
+```
+
+```a1.py
+def a_def1(
+    a,
+    b
+):
+    return a + b
+
+def a():
+    def a_def2(a, b):
+        return a + b
+def b():
+    def a_def2(a, b):
+        return a + b
+def a_def2():
+    return "x"
+```
+
+```a2.py
+class A:
+    def a(self, a1, a2):
+        c, d = self.b(a1x)
+        # a2x is incorrect
+        c, d = self.b(a2x)
+        if a1 > 0:
+            c = "x" + a1
+        return 1,2
+    def b(self, a1):
+        c, d = self.b(a1x)
+        # a2x is wrong
+        c, d = self.b(a2x)
+        if a1 > 0:
+            c = "x" + a1
+        return 1,2
+```
+
+```a3.py
+class MyClass(NamedTuple):
+    def __init__(self):
+        instance_var_1: str = '4r3'
+    def myFirstFunction(
+        self, name: str,
+        age: int
+    ):
+        if age > 70
+            a = doSomething(name, age)
+        return a + 5 + len(self.instance_var_1) * 7
+    def middle(self):
+        pass
+    def anotherFunction(self, name: str, age: int):
+        print("dummy...")
+        b = checkVal(45, "strict", self.myFirstFunction(name, age), 8, "tops", "lops")
+        bb = checkVal(7, "lax", self.myFirstFunction(name, age), 2, "bottom", 'lops')
+        c = "x" + '"' + "'" + "z" + "lops"
+        print("calc d...lops...")
+        print("dummy...")
+        d = checkVal(45, "strict", self.myFirstFunction(name, age), 8, "tops", """lops""")
+        print("calc dd...")
+
+        
+        print("takes longer...")
+        print("dummy...")
+        dd = checkVal(4455, "aasdf", '33se"asd',
+          "strict", 8, 
+          "tops", "xx", 'lops'
+          '9"f', "as'df", self.myFirstFunction(name, age), 'lops')
+        return b * 3
+```
+</codebase>
+
+Consider the files in the codebase above and see the examples below.
+
+<dl note="each 'dd' item gets a fresh copy of the codebase files">
+
+<dt file="greenfield-style.py">Implement `is_zero`</dt>
+<dd>
+Implement the `is_zero` function that checks if a number is zero. Here's a simple and efficient implementation:
+</dd>
+<dd>
+-- Note: The body of `is_zero` is at indentation level 1
+UPDATE FUNCTION ".is_zero"
+  FROM FILE "greenfield-style.py"
+REPLACE BODY WITH CONTENT r'''
+    return num == 0
+''';
+</dd>
+
+<dt file="greenfield-style.py">Implement `is_even`</dt>
+<dd>
+Implement the `is_even` function that checks if a number is even. Here's a simple and efficient implementation:
+</dd>
+<dd>
+-- Note: The body of `is_even` is at indentation level 3
+UPDATE FUNCTION ".root.nested_1.is_even"
+  FROM FILE "greenfield-style.py"
+REPLACE BODY WITH CONTENT r'''
+            return num % 2 == 0
+''';
+</dd>
+
+<dt file="greenfield-style.py">Implement `is_odd`</dt>
+<dd>
+Implement the `is_odd` function that checks if a number is odd. Here's a simple and efficient implementation:
+</dd>
+<dd>
+-- Note: The body of `is_odd` is at indentation level 4
+UPDATE FUNCTION ".root.nested_1.nested_2.is_odd"
+  FROM FILE "greenfield-style.py"
+REPLACE BODY WITH CONTENT r'''
+                return num % 2 != 0
+''';
+</dd>
+
+<dt file="greenfield-style.py">Fix class `Card`</dt>
+<dd>
+The `Card` class has 2 problems:
+1. The `__init__` method is empty (pass);
+2. The string formatting is incorrect
+</dd>
+<dd>
+-- we also need to modify the method's signature, so we use REPLACE WHOLE (instead of REPLACE BODY)
+UPDATE METHOD "Card.__init__"
+  FROM FILE "greenfield-style.py"
+REPLACE WHOLE WITH CONTENT r'''
+    def __init__(self, rank, suit):
+        self.rank = rank
+        self.suit = suit
+''';
+
+-- Here we just need to modify the method's BODY
+UPDATE METHOD "Card.__str__"
+  FROM FILE "greenfield-style.py"
+REPLACE BODY WITH CONTENT r'''
+        return f"{self.rank}{self.suit}"
+''';
+</dd>
+
+<dt file="Makefile">Add `v` as an alias to `version`</dt>
+<dd>
+UPDATE FILE "Makefile"
+REPLACE WHOLE WITH CASE
+  WHEN REGEX r'''^\.PHONY''' THEN SUB
+    r'''version'''
+    r'''version v'''
+  WHEN REGEX r'''^version''' THEN SUB
+    r'''^version'''
+    r'''version v'''
+END;
+</dd>
+<dd>
+-- We can use a regex group reference (\1) to be even more concise
+UPDATE FILE "Makefile"
+REPLACE WHOLE WITH CASE
+  WHEN REGEX r'''^\.PHONY''' THEN SUB
+    r'''(version)'''
+    r'''\1 v'''
+  WHEN REGEX r'''^version''' THEN SUB
+    r'''^(version)'''
+    r'''\1 v'''
+END;
+</dd>
+
+<dt file="a1.py">Add Docstring to a Python function/method/body</dt>
+<dd>
+-- Using `INTO .. TOP` is the *BEST* option to add content to the top of the body
+UPDATE FILE "a1.py"
+INSERT INTO FUNCTION "a_def1" TOP
+WITH CONTENT r'''
+    """Calculate sum of two numbers.
+    
+    Args:
+        a: First number
+        b: Second number
+    
+    Returns:
+        Sum of a and b
+    """
+''';
+</dd>
+<dd>
+-- We can also use `(AFTER|BEFORE) `LINE '''<string>'''`, which is still an excellent choice for this case.
+UPDATE FUNCTION "a_def1"
+FROM FILE "a1.py"
+INSERT AFTER LINE '''):'''
+WITH CONTENT r'''
+    """Calculate sum of two numbers.
+    
+    Args:
+        a: First number
+        b: Second number
+    
+    Returns:
+        Sum of a and b
+    """
+''';
+</dd>
+
+<dt file="a1.py">Disambiguate using parent chains</dt>
+<dd>We cannot simply use `FUNCTION "a_def2"`, as it matches all 3 functions with that name.
+We should use the `parent chain` to easily disambiguate it:</dd>
+<dd>
+-- Target the top-level a_def2
+-- Starting the parent chain with a dot means we're anchoring the root (top level).
+UPDATE FILE "a1.py"
+INSERT INTO FUNCTION ".a_def2" TOP
+WITH CONTENT r'''
+    """Returns a value"""
+''';
+</dd>
+<dd>
+-- Target a_def2 inside 'a'
+-- Matches if a_def2 has 'a' as its immediate parent
+UPDATE FILE "a1.py"
+INSERT INTO FUNCTION "a.a_def2" TOP
+WITH CONTENT r'''
+        """Returns a value"""
+''';
+</dd>
+
+<dt file="a1.py">Disambiguate by setting the <update-target> to a specific <identifier_matcher></dt>
+<dd>
+-- Set the update target to "a". Notice "a_def1" is unambiguous inside "a"
+-- Matches the function at any level of nesting *inside* the update target
+UPDATE FUNCTION "a"
+FROM FILE "a1.py"
+INSERT INTO FUNCTION "a_def1" TOP
+WITH CONTENT r'''
+        """Returns a value"""
+''';
+</dd>
+
+<dt file="a2.py">Replace all occurrences of a string</dt>
+<dd>Replace references to 'a1x' with 'a1' in all lines</dd>
+<dd>
+-- Replace ALL occurrences of 'a1x' with 'a1' using a simple CASE WHEN...THEN filter
+UPDATE CLASS "A"
+  FROM FILE "a2.py"
+REPLACE WHOLE WITH CASE
+  WHEN REGEX r'''a1x''' THEN SUB
+    r'''a1x'''
+    r'''a1'''
+END;
+</dd>
+<dd>
+-- Alternative form (more specific)
+UPDATE CLASS "A"
+  FROM FILE "a2.py"
+REPLACE WHOLE WITH CASE
+  WHEN REGEX r'''a1x''' THEN SUB
+    r'''\(a1x\)'''
+    r'''(a1)'''
+END;
+</dd>
+<dd>Replace references to 'a2x' with 'a2' in all lines except comment lines</dd>
+<dd>
+-- To avoid touching the comment line, now we *MUST* be more specific in the SUB clause
+UPDATE CLASS "A"
+  FROM FILE "a2.py"
+REPLACE WHOLE WITH CASE
+  WHEN REGEX r'''a2x''' THEN SUB
+    r'''\(a2x\)'''
+    r'''(a2)'''
+END;
+</dd>
+<dd>
+-- Alternative form (directly skipping all comment lines)
+UPDATE CLASS "A"
+  FROM FILE "a2.py"
+REPLACE WHOLE WITH CASE
+  WHEN REGEX r'''^#''' THEN CONTINUE
+  WHEN REGEX r'''a2x''' THEN SUB
+    r'''a2x'''
+    r'''a2'''
+END;
+</dd>
+
+<dt file="a3.py">Replace all print statements with logging calls while preserving indentation</dt>
+<dd>
+-- Using CASE WHEN...THEN
+UPDATE FUNCTION "my_func"
+  FROM FILE "a3.py"
+REPLACE BODY WITH CASE
+  WHEN REGEX r'''print\(''' THEN SUB
+    r'''print\((.*)\)'''
+    r'''logging.info(\1)'''
+END;
+</dd>
+<dd>
+-- Using an ed script
+UPDATE FUNCTION "my_func"
+  FROM FILE "a3.py"
+REPLACE BODY WITH ED r'''
+g/print(/s/print(\(.*\))/logging.info\1/g
+''';
+</dd>
+
+<dt file="a3">Remove duplicate blank lines (collapse multiple empty lines into one)</dt>
+<dd>
+UPDATE METHOD "anotherFunction"
+FROM FILE "a3.py"
+REPLACE BODY WITH ED r'''
+g/^$/,/[^$]/-j
+''';
+</dd>
+
+<dt file="a3">Remove all comments</dt>
+<dd>
+UPDATE METHOD "anotherFunction"
+FROM FILE "a3.py"
+REPLACE BODY WITH ED r'''
+g/^\s*#/d
+''';
+</dd>
+
+<dt file="a3">Add error handling around function calls</dt>
+<dd>
+UPDATE METHOD "anotherFunction"
+FROM FILE "a3.py"
+REPLACE BODY WITH ED r'''
+'s/^(\s*)(.*\(\))/\1try:\
+\1    \2\
+\1except Exception as e:\
+\1    logging.error(f"Failed: {e}")/g
+''';
+</dd>
+
+<dt file="a3.py">Replace many occurrences of a word and also delete multiple lines</dt>
+<dd>To replace `lops` with `loops` in many places, it's more concise to use a `WHEN..THEN` filter with a `REGEX` matcher</dd>
+<dd>Let's also delete all lines containing the expression 'dummy...'</dd>
+<dd>
+UPDATE METHOD "anotherFunction"
+  FROM FILE "a3.py"
+REPLACE BODY
+WITH CASE
+  WHEN REGEX r'''dummy\.\.\.''' THEN REMOVE
+  WHEN REGEX r'''lops''' THEN SUB
+    r'''lops'''
+    r'''loops'''
+END;
+</dd>
+
+<dt file="a3.py">Delete all empty lines in a method</dt>
+<dd>
+-- Using WHEN...THEN filter
+UPDATE METHOD "anotherFunction"
+FROM FILE "a3.py"
+REPLACE BODY WITH CASE
+  WHEN EMPTY THEN REMOVE
+END;
+</dd>
+<dd>
+-- Using an ed script filter
+UPDATE METHOD "anotherFunction"
+FROM FILE "file.py"
+REPLACE BODY WITH ED r'''
+g/^$/d
+''';
+</dd>
+
+<dt file="a3.py">Refactor a method into a stand-alone, top level function</dt>
+<dd>Let's choose method `myFirstFunction` for our example</dd>
+<dd>
+-- 1. Move the `myFirstFunction()` method from the `MyClass` class, placing it at the top level, just before the line where its class starts.
+UPDATE FILE "a3.py"
+MOVE METHOD "myFirstFunction"
+INSERT BEFORE CLASS "MyClass"
+  RELATIVE INDENTATION 0; -- the function being moved will start at the same indentation as the class `MyClass`
+
+-- 2. Update the copied function to remove references to `self`, now declaring `instance_var_1` as parameter
+UPDATE FUNCTION "myFirstFunction"
+  FROM FILE "a3.py"
+REPLACE WHOLE
+WITH CASE
+  WHEN REGEX r'''self,''' THEN SUBS 
+    r'''self,'''
+    r'''instance_var_1: str,'''
+  WHEN REGEX r'''instance_var_1''' THEN SUBS
+    r'''self\.(instance_var_1)''' -- capture the part we want to keep
+    r'''\1''' -- replace the match with captured group 1
+END;
+
+-- 3. Update ALL call sites of the method `myFirstFunction` to call the new top-level function with the same name, passing `instance_var_1` as argument
+UPDATE METHOD "anotherFunction"
+  FROM FILE "a3.py"
+REPLACE BODY WITH CASE
+  WHEN REGEX r'''self\.myFirstFunction''' THEN SUBS
+    r'''self\.(myFirstFunction\()''' -- capture the part we want to keep (which includes the opening paranthesis)
+    r'''\1instance_var_1, ''' -- \1 also contains the '(' so we immediately write 'instance_var_1, '
+END;
+</dd>
+
+</dl>

@@ -61,7 +61,11 @@ include = ["cedarscript_integration_aider*"]
 namespaces = false
 
 [tool.setuptools.package-data]
-"*" = ["*.txt", "*.rst"]
+"cedarscript_integration_aider" = [
+    "cedarscript-raw/*.txt",
+    "cedarscript-raw/*.xml",
+    "cedarscript-raw/*.md",
+]
 
 [tool.black]
 line-length = 100

@@ -1,25 +1,14 @@
-from .cedarscript_prompts_main import CEDARScriptPromptsMain
-from .cedarscript_prompts_rw import CEDARScriptPromptsRW
-from .cedarscript_prompts_w import CEDARScriptPromptsW
 from ._version import __version__
+from importlib.resources import files
+from pathlib import Path
+
 
 __all__ = [
     "__version__",
-    "CEDARScriptPromptsAdapter",
-    "CEDARScriptPromptsMain",
-    "CEDARScriptPromptsRW",
-    "CEDARScriptPromptsW"
+    "prompt_folder_path",
 ]
 
-class CEDARScriptPromptsAdapter:
-    def __init__(self, cedarscript_prompts, base_prompts):
-        self.cedarscript_prompts: CEDARScriptPromptsBase = cedarscript_prompts
-        self.base_prompts = base_prompts
-
-    def __getattribute__(self, name):
-        cedarscript_prompts = super().__getattribute__('cedarscript_prompts')
-        if hasattr(cedarscript_prompts, name):
-            return getattr(cedarscript_prompts, name)
-
-        base_prompts = super().__getattribute__('base_prompts')
-        return getattr(base_prompts, name)
+def prompt_folder_path(name: str) -> Path:
+    result = files('cedarscript_integration_aider').joinpath(name)
+    assert result.exists(), f"[prompt_folder_path '{name}']: Path not found: {result}"
+    return result
