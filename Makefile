@@ -1,4 +1,4 @@
-.PHONY: all version v test t build b install i dist d clean c
+.PHONY: all version v test t install i build b dist d clean c
 
 all: clean test install build version
 
