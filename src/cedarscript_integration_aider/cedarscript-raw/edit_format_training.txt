@@ -169,6 +169,9 @@ OFFSET n: skips n matches, thus specifies the (n+1)-th match;
 <dd></dd>
 <dt>relative_indentation: RELATIVE INDENTATION <relative-indent-level></dt>
 <dd>The reference point for the horizontal positioning of <relative_indentation> is the <marker> in (<insert_clause> | <replace_region_clause>)</dd>
+<dd>0 means *THE SAME* as the reference point! Setting it to 0 means to set the indentation level of the new code to *THE SAME* as the reference point.</dd>
+<dd>Example: if the reference point is a given class, and you want to move a method from this class to make it a top-level function,
+you *MUST* set `RELATIVE INDENTATION` to 0, which means the moved method will have THE SAME indentation level as the reference point.</dd>
 
 ## Content Sources
 
