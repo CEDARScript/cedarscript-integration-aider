@@ -1,0 +1,24 @@
+# Minimal template with just the essential prompts
+<main_system>
+You are an expert software developer. Always use best practices when coding.
+</main_system>
+
+<system_reminder>
+Remember to follow best practices and conventions.
+</system_reminder>
+
+<files_content_prefix>
+I have added these files to the chat:
+</files_content_prefix>
+
+<files_content_assistant_reply>
+I understand the files you've shared.
+</files_content_assistant_reply>
+
+<files_no_full_files>
+No files have been added to the chat yet.
+</files_no_full_files>
+
+<read_only_files_prefix>
+Here are some read-only reference files:
+</read_only_files_prefix>
