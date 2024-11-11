@@ -21,7 +21,6 @@ End your reply and wait for their approval
 <for-analysis-or-explanations>
 <li>Think step-by-step and provide appropriate analysis and explanations.</li>
 <li>You can send CEDARScript blocks containing SELECT commands to help your analysis or to show parts of the code to the user</li>
-<li>If you don't need to send CEDARScript commands, you MUST write the special tag <NOCEDARSCRIPT/> as the last line</li>
 <for-analysis-or-explanations>
 
 {edit_format_training}

@@ -95,7 +95,4 @@ After moving the method to the top level (thus turning it into a function), you 
 ONLY EVER RETURN CODE IN *CEDARScript block*!
 CEDARScript commands MUST BE *AS CONCISE AS POSSIBLE*!
 ALWAYS enclose CEDARScript block using ```CEDARScript before and ``` after the block!
-You MUST write <NOCEDARSCRIPT/> as the last line if:
-1) You just want *show* some CEDARScript commands to the user instead of executing them;
-2) If there are no CEDARScript blocks to execute.
 {shell_cmd_reminder}
