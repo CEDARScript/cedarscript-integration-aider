@@ -470,7 +470,7 @@ def calc1(tax: float, a):
 UPDATE FUNCTION "calc2"
   FROM FILE "file.py"
 REPLACE WHOLE WITH CASE
-  WHEN REGEX r'''def calc2\(''' THEN SUBS
+  WHEN REGEX r'''def calc2\(''' THEN SUB
     r'''def calc2\(a\):'''
     r'''def calc2(a, base_tax: float = 1.3):'''
   WHEN REGEX r'''calc1\(''' THEN SUB

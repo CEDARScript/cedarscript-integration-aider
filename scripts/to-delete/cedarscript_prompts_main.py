@@ -676,10 +676,10 @@ UPDATE FUNCTION "myFirstFunction"
   FROM FILE "a3.py"
 REPLACE WHOLE
 WITH CASE
-  WHEN REGEX r'''self,''' THEN SUBS 
+  WHEN REGEX r'''self,''' THEN SUB 
     r'''self,'''
     r'''instance_var_1: str,'''
-  WHEN REGEX r'''instance_var_1''' THEN SUBS
+  WHEN REGEX r'''instance_var_1''' THEN SUB
     r'''self\\.(instance_var_1)''' -- capture the part we want to keep
     r'''\\1''' -- replace the match with captured group 1
 END;
@@ -688,7 +688,7 @@ END;
 UPDATE METHOD "anotherFunction"
   FROM FILE "a3.py"
 REPLACE BODY WITH CASE
-  WHEN REGEX r'''self\\.myFirstFunction''' THEN SUBS
+  WHEN REGEX r'''self\\.myFirstFunction''' THEN SUB
     r'''self\\.(myFirstFunction\\()''' -- capture the part we want to keep (which includes the opening paranthesis)
     r'''\\1instance_var_1, ''' -- \\1 also contains the '(' so we immediately write 'instance_var_1, '
 END;
@@ -1240,7 +1240,7 @@ WITH CONTENT '''
 UPDATE FUNCTION "calc2"
   FROM FILE "file.py"
 REPLACE WHOLE WITH CASE
-  WHEN REGEX r'''def calc2\\(''' THEN SUBS
+  WHEN REGEX r'''def calc2\\(''' THEN SUB
     r'''def calc2\\(a\\):'''
     r'''def calc2(a, base_tax: float = 1.3):'''
   WHEN REGEX r'''calc1\\(''' THEN SUB
