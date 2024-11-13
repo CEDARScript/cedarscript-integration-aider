@@ -10,7 +10,8 @@ test t:
 	echo TODO pytest --cov=src/cedarscript_integration_aider tests/ --cov-report term-missing
 
 install i:
-	pip install -e .
+	pip install --upgrade --force-reinstall -e . \
+	&& pip show cedarscript-integration-aider
 
 build b:
 	# SETUPTOOLS_SCM_PRETEND_VERSION=0.0.1

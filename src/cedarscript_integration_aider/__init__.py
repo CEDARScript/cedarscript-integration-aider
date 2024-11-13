@@ -8,7 +8,4 @@ __all__ = [
     "prompt_folder_path",
 ]
 
-def prompt_folder_path(name: str) -> Path:
-    result = files('cedarscript_integration_aider').joinpath(name)
-    assert result.exists(), f"[prompt_folder_path '{name}']: Path not found: {result}"
-    return result
+prompt_folder_path = files('cedarscript_integration_aider')
