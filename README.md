@@ -11,8 +11,7 @@ as an [_edit format_](https://aider.chat/docs/benchmarks.html#edit-formats).
 
 ## Table of Contents
 - [What is CEDARScript?](#what-is-cedarscript)
-- [Installation](#how-to-use-it)
-- [Usage](#usage)
+- [Installation](#installation)
 - [Why Use CEDARScript?](#why-use-cedarscript)
 - [Performance Comparison](#performance-comparison)
 - [Individual Test Analysis](#individual-test-analysis)
@@ -27,17 +26,23 @@ is a domain-specific language designed to improve how AI coding assistants inter
 It provides a standardized way to express complex code modification and analysis operations, making it easier for
 AI-assisted development tools to understand and execute these tasks.
 
-## How to use it
+## Installation
 
-1. [Install Aider](https://aider.chat/docs/install.html), if you haven't.
+1. Install _**Aider with CEDARScript**_ via this command below:
+```shell
+python -m ensurepip --upgrade
+pip install --upgrade --force-reinstall \
+git+https://github.com/elifarley/aider@cedarscript \
+aider-chat
+```
 2. Now, simply use the [`--edit-format` switch](https://aider.chat/docs/more/edit-formats.html) and select `cedarscript`:
 ```shell
-aider --model gemini/gemini-1.5-flash-latest --edit-format cedarscript
+aider --edit-format cedarscript
 ```
 
 ## Why use CEDARScript?
 
-`TL;DR`: You can get higher success rates when compared to other edit formats.
+`TL;DR`: You can get higher success rates when refactoring large files, comparing to other edit formats.
 
 1. **Higher Success Rates**: Significantly improves the performance of AI models in code refactoring tasks.
 2. **Cost-Effective Performance**: Enables more affordable models to compete with top-tier options.
@@ -63,17 +68,27 @@ CEDARScript has shown remarkable improvements in AI model performance for code r
 This suggests that **CEDARScript** can level the playing field, enabling more accessible AI models
 to compete with and even _exceed_ the capabilities of more expensive options in certain coding tasks.
 
+### The Gemini 1.5 Flash benchmark highlights
+
+- 48% of tests (43 total) showed improvements
+- 103% increase in Pass 1 success rate (75 tests)
+- Test duration reduced by 93% (from 5:17:26 to 0:25:17)
+- Token efficiency greatly improved:
+- Sent tokens: -37% (7.59M)
+- Received tokens: -96% (180K)
+- Error reduction:
+- Error outputs: -94% (35 total)
+- Malformed outputs: -94% (6 cases)
+- Syntax errors: -85% (3 cases)
+- Indent errors eliminated (100% reduction)
+
+<details>
+<summary>Delta...</summary>
+  
+![image](https://github.com/user-attachments/assets/86683a1b-2b64-49c9-89ff-eb18d3511ae7)
+</details>
 
 ### Individual Test Analysis
-
-**Overall Performance**
-
-|             | Count | %     |
-|-------------|-------|-------|
-| Improved    | 39    | 43.8% |
-| Worsened    | 7     | 7.9%  |
-| Stable      | 43    | 48.3% |
-| Total tests | 89    | 100%  |
 
 <details>
 <summary>Individual Test Diff</summary>
