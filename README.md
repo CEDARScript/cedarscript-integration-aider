@@ -14,6 +14,8 @@ as an [_edit format_](https://aider.chat/docs/benchmarks.html#edit-formats).
 - [Installation](#installation)
 - [Why Use CEDARScript?](#why-use-cedarscript)
 - [Performance Comparison](#performance-comparison)
+   - [Notable Achievements](#notable-achievements)
+   - [The Gemini 1.5 Flash benchmark highlights](#the-gemini-15-flash-benchmark-highlights)
 - [Individual Test Analysis](#individual-test-analysis)
 - [Detailed Analysis](#detailed-analysis)
 - [Contributing](#contributing)
