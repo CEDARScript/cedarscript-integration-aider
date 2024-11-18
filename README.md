@@ -23,7 +23,7 @@ as an [_edit format_](https://aider.chat/docs/benchmarks.html#edit-formats).
 
 ## What is CEDARScript?
 
-[CEDARScript](https://github.com/CEDARScript/cedarscript-grammar#readme) (_Concise Examination, Development, And Refactoring Script_)
+[CEDARScript](https://bit.ly/cedarscript) (_Concise Examination, Development, And Refactoring Script_)
 is a domain-specific language designed to improve how AI coding assistants interact with codebases and communicate their code modification intentions.
 It provides a standardized way to express complex code modification and analysis operations, making it easier for
 AI-assisted development tools to understand and execute these tasks.
