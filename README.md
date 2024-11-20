@@ -12,6 +12,7 @@ as an [_edit format_](https://aider.chat/docs/benchmarks.html#edit-formats).
 ## Table of Contents
 - [What is CEDARScript?](#what-is-cedarscript)
 - [Installation](#installation)
+- [Running a Benchmark](#running-a-benchmark)
 - [Why Use CEDARScript?](#why-use-cedarscript)
 - [Performance Comparison](#performance-comparison)
    - [Notable Achievements](#notable-achievements)
@@ -30,7 +31,7 @@ AI-assisted development tools to understand and execute these tasks.
 
 ## Installation
 
-1. Install _**Aider with CEDARScript**_ via this command below:
+1. Install **Aider with _CEDARScript and CedarTL support_** via this command below:
 ```shell
 python -m ensurepip --upgrade
 pip install --upgrade --force-reinstall \
@@ -40,6 +41,37 @@ aider-chat
 2. Now, simply use the [`--edit-format` switch](https://aider.chat/docs/more/edit-formats.html) and select `cedarscript`:
 ```shell
 aider --edit-format cedarscript
+```
+
+## Running a Benchmark
+
+### One-Time Actions
+First, [install Aider with CEDARScript](#installation);
+
+Then, follow the [**benchmark setup instructions**](https://github.com/Aider-AI/aider/blob/main/benchmark/README.md#setup-for-benchmarking) once.
+
+Following that, install the [`refactor-benchmark`](https://github.com/Aider-AI/refactor-benchmark/tree/main#benchmark-details),
+which will perform refactorings on a _non-trivial_ amount of code found in fairly **large** files:
+```shell
+( cd tmp.benchmarks && git clone https://github.com/Aider-AI/refactor-benchmark.git )
+```
+
+## For Every Benchmark Run
+Finally, for every new benchmark you want to run:
+```shell
+# Launch the docker container
+./benchmark/docker.sh
+
+# Inside the container, install aider as a development build.
+# This way you're running the code that you cloned above, including any local changes.
+pip install -e .
+
+### 
+./benchmark/benchmark.py gemini-flash-cedarscript-version-refactor \
+--model gemini/gemini-1.5-flash-latest \
+--edit-format cedarscript \
+--exercises-dir refactor-benchmark \
+--threads 1 #### Must be only 1 ####
 ```
 
 ## Why use CEDARScript?
