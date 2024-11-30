@@ -8,7 +8,7 @@ dynamic = ["version"]
 description = "Allows `Aider` to use CEDARScript as an edit format"
 authors = [{ name = "Elifarley", email = "cedarscript@orgecc.com" }]
 readme = "README.md"
-license = {text = "AGPL-3.0"}
+license = {text = "Apache-2.0"}
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Programming Language :: Python :: 3",
