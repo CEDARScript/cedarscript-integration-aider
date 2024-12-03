@@ -50,7 +50,7 @@ First, [install Aider with CEDARScript](#installation);
 
 Then, follow the [**benchmark setup instructions**](https://github.com/Aider-AI/aider/blob/main/benchmark/README.md#setup-for-benchmarking) once.
 
-Following that, install the [`refactor-benchmark`](https://github.com/Aider-AI/refactor-benchmark/tree/main#benchmark-details),
+Then, install the [`refactor-benchmark`](https://github.com/Aider-AI/refactor-benchmark/tree/main#benchmark-details),
 which will perform refactorings on a _non-trivial_ amount of code found in fairly **large** files:
 ```shell
 ( cd tmp.benchmarks && git clone https://github.com/Aider-AI/refactor-benchmark.git )
@@ -60,14 +60,14 @@ which will perform refactorings on a _non-trivial_ amount of code found in fairl
 Finally, for every new benchmark you want to run:
 ```shell
 # Launch the docker container
-./benchmark/docker.sh
+benchmark/docker.sh
 
 # Inside the container, install aider as a development build.
 # This way you're running the code that you cloned above, including any local changes.
 pip install -e .
 
 ### 
-./benchmark/benchmark.py gemini-flash-cedarscript-version-refactor \
+benchmark/benchmark.py gemini-flash-cedarscript-version-refactor \
 --model gemini/gemini-1.5-flash-latest \
 --edit-format cedarscript \
 --exercises-dir refactor-benchmark \
